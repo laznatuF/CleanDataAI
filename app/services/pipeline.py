@@ -11,7 +11,7 @@ from app.services.profiling import generate_profile_html
 from app.core.config import BASE_DIR
 
 def run_pipeline(file: UploadFile) -> dict:
-    # 1) Validación de seguridad (extensión + tamaño)
+    # 1) Validación de seguridad extensión + tamaño
     validate_filename_and_size(file)
 
     # 2) Carpeta del proceso (runs/{id}/artifacts)
