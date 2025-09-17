@@ -1,6 +1,9 @@
 from pathlib import Path
+import os
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+# raíz del repo (sube: core → app → raíz)
+BASE_DIR = Path(__file__).resolve().parents[2]
+
 RUNS_DIR = BASE_DIR / "runs"
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
