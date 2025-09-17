@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Reporte de Perfilado</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:24px}
+    table{border-collapse:collapse;width:100%;margin:12px 0}
+    th,td{border:1px solid #ddd;padding:8px;font-size:14px}
+    th{background:#f4f4f4;text-align:left}
+    .muted{color:#777}
+  </style>
+</head>
+<body>
+  <h1>Reporte de Perfilado</h1>
+  <p class="muted">Filas: {{ n_rows }} · Columnas: {{ n_cols }}</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Columna</th><th>Tipo</th><th>Únicos</th>
+        <th>Nulos</th><th>% Nulos</th><th>Stats</th><th>Sample</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in columns %}
+      <tr>
+        <td><code>{{ c.name }}</code></td>
+        <td>{{ c.dtype }}</td>
+        <td>{{ c.n_unique }}</td>
+        <td>{{ c.n_missing }}</td>
+        <td>{{ "%.2f"|format(c.missing_pct) }}%</td>
+        <td>
+          {% if c.is_numeric %}
+            min={{ "%.3f"|format(c.min) }},
+            max={{ "%.3f"|format(c.max) }},
+            mean={{ "%.3f"|format(c.mean) }},
+            std={{ "%.3f"|format(c.std) }}
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ c.sample }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
