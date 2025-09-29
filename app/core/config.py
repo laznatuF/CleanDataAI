@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 RUNS_DIR = BASE_DIR / "runs"
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
-APP_NAME = "CleanDataIA"
+APP_NAME = "CleanDataAI"
 
 # Formatos permitidos para los uploads
 ALLOWED_EXTENSIONS = {".csv", ".xlsx", ".xls", ".ods"}
