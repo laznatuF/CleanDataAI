@@ -1,52 +1,65 @@
+# app/utils/files.py
 from __future__ import annotations
+import os
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
-import shutil
-import uuid
-import os
-import json
+from typing import Iterable
 
-from app.core.config import RUNS_DIR, ALLOWED_EXTENSIONS, MAX_FILE_SIZE_MB
+ALLOWED_EXT = {".csv", ".xlsx", ".xls", ".ods"}
+
+def _ext_ok(filename: str, allowed: Iterable[str]) -> bool:
+    return any(filename.lower().endswith(e) for e in allowed)
+
+def _get_size_bytes(file: UploadFile) -> int:
+    # SpooledTemporaryFile: medimos y rebobinamos
+    f = file.file
+    cur = f.tell()
+    f.seek(0, os.SEEK_END)
+    size = f.tell()
+    f.seek(cur, os.SEEK_SET)
+    return size
 
 def validate_filename_and_size(file: UploadFile) -> None:
-    """
-    - Rechaza extensiones que no estén en ALLOWED_EXTENSIONS.
-    - Rechaza archivos mayores a MAX_FILE_SIZE_MB (por seguridad demo).
-    """
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"Extensión no permitida: {ext}")
+    # Tamaño máximo configurable
+    max_mb = float(os.getenv("MAX_FILE_SIZE_MB", "20"))
+    max_bytes = int(max_mb * 1024 * 1024)
 
-    # Calcula tamaño (UploadFile usa un stream; lo movemos al final y volvemos)
-    pos = file.file.tell()
-    file.file.seek(0, os.SEEK_END)
-    size = file.file.tell()
-    file.file.seek(pos)
-    if size > MAX_FILE_SIZE_MB * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Archivo demasiado grande para la demo.")
+    name = (file.filename or "").strip()
+    if not name or not _ext_ok(name, ALLOWED_EXT):
+        raise HTTPException(status_code=415, detail="Formato no soportado. Usa CSV, XLSX, XLS u ODS.")
 
-def create_process_dir() -> Path:
-    """
-    - Genera un UUID como id de proceso.
-    - Crea runs/{id}/artifacts/
-    """
-    process_id = str(uuid.uuid4())
-    proc_dir = RUNS_DIR / process_id
+    size = _get_size_bytes(file)
+    if size > max_bytes:
+        mb = round(size / (1024 * 1024), 2)
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo demasiado grande ({mb} MB). Límite permitido: {int(max_mb)} MB."
+        )
+
+def create_process_dir(base: Path | None = None) -> Path:
+    from uuid import uuid4
+    from app.core.config import RUNS_DIR
+    root = base or RUNS_DIR
+    proc_dir = root / str(uuid4())
+    (proc_dir / "input").mkdir(parents=True, exist_ok=True)
     (proc_dir / "artifacts").mkdir(parents=True, exist_ok=True)
+    (proc_dir / "tmp").mkdir(parents=True, exist_ok=True)
     return proc_dir
 
-def save_upload(file: UploadFile, dest_dir: Path) -> Path:
-    """
-    - Guarda el archivo subido en la carpeta del proceso.
-    """
-    out = dest_dir / file.filename
-    file.file.seek(0)  # por si alguien leyó el stream antes
-    with out.open("wb") as f:
-        shutil.copyfileobj(file.file, f)
-    return out
+def save_upload(file: UploadFile, proc_dir: Path) -> Path:
+    path = proc_dir / "input" / (file.filename or "input.bin")
+    file.file.seek(0)
+    with open(path, "wb") as f:
+        f.write(file.file.read())
+    return path
 
 def write_json(path: Path, data: dict) -> None:
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    import json
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    import json
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)

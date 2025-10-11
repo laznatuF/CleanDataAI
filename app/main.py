@@ -1,20 +1,26 @@
+# app/main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.core.config import BASE_DIR
-from app.api.process import router as process_router
+from app.core.config import RUNS_DIR
 from app.api.status import router as status_router
+from app.api.process import router as process_router
 
-app = FastAPI(title="CleanDataIA")
+app = FastAPI(title="CleanDataAI")
 
-# Sirve /static y /runs desde la raíz (porque BASE_DIR apunta a la raíz)
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-app.mount("/runs", StaticFiles(directory=str(BASE_DIR / "runs")), name="runs")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Conectar endpoints
-app.include_router(process_router)
-app.include_router(status_router)
+@app.get("/health")
+def health():
+    return {"ok": True}
 
-@app.get("/")
-def root():
-    return {"message": "CleanDataIA API - MVP listo para empezar"}
+app.mount("/runs", StaticFiles(directory=str(RUNS_DIR)), name="runs")
 
+# CLAVE: prefijo /api
+app.include_router(process_router, prefix="/api")
+app.include_router(status_router,  prefix="/api")
