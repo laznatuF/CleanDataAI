@@ -5,6 +5,7 @@ import Status from "./pages/Status";
 import Results from "./pages/Results";
 import Settings from "./pages/Settings";
 import LoginToken from "./pages/LoginToken";
+import DiagnosticsPage from "../api/pages/Diagnostics";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Home /> },
@@ -15,4 +16,5 @@ export const router = createBrowserRouter([
   { path: "/status", loader: () => redirect("/") },
   { path: "/results", loader: () => redirect("/") },
   { path: "*", element: <Home /> },
+  { path: "/diagnostico", element: <DiagnosticsPage /> },
 ]);
