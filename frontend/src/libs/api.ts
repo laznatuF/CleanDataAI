@@ -1,50 +1,84 @@
-// src/lib/api.ts
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''; // dev: vacío → usa proxy
+// src/libs/api.ts
+const API = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
-type StepState = 'pending' | 'queued' | 'running' | 'ok' | 'failed' | string;
+/** Wrapper con credentials y manejo de Content-Type.
+ * No forzamos "application/json" si el body es FormData. */
+async function http<T = any>(url: string, opts: RequestInit = {}): Promise<T> {
+  const headers =
+    opts.body instanceof FormData
+      ? { ...(opts.headers || {}) }
+      : { "Content-Type": "application/json", ...(opts.headers || {}) };
 
-export interface Step { name: string; status: StepState }
-export interface StatusResponse {
-  id?: string; status?: string; progress?: number | null;
-  updated_at?: string | null; current_step?: string | null;
-  steps?: Step[]; artifacts?: Record<string,string>; metrics?: Record<string,unknown>;
-  error?: string;
-}
-export interface UploadResponse { id: string; process_id?: string; status?: string }
-
-function friendlyError(res: Response, body: string) {
-  if (res.status === 415) return "Formato no soportado. Usa CSV, XLSX, XLS u ODS.";
-  if (res.status === 413) return body || "Archivo demasiado grande. Reduce el tamaño e intenta de nuevo.";
-  if (res.status === 400) return body || "Solicitud inválida.";
-  if (res.status === 404) return body || "Proceso no encontrado.";
-  return body || `Error ${res.status} ${res.statusText}`;
-}
-
-async function parseJsonSafe(res: Response) {
-  const ct = res.headers.get('content-type') ?? '';
-  const txt = await res.text();
-  if (!ct.includes('application/json')) {
-    throw new Error(friendlyError(res, txt.slice(0,160)));
-  }
-  try { return JSON.parse(txt) } catch { throw new Error(friendlyError(res, txt.slice(0,160))) }
-}
-
-export async function uploadFile(file: File): Promise<UploadResponse> {
-  const fd = new FormData(); fd.append('file', file);
-  const res = await fetch(`${API_BASE}/api/process`, { method: 'POST', body: fd });
-  if (!res.ok) throw new Error(await res.text().then(t => friendlyError(res, t)));
-  return (await parseJsonSafe(res)) as UploadResponse;
-}
-
-export async function getStatus(processId: string): Promise<StatusResponse> {
-  const res = await fetch(`${API_BASE}/api/status/${encodeURIComponent(processId)}`, {
-    headers: { Accept: 'application/json' },
+  const res = await fetch(API + url, {
+    credentials: "include",
+    ...opts,
+    headers,
   });
-  if (!res.ok) throw new Error(await res.text().then(t => friendlyError(res, t)));
-  return (await parseJsonSafe(res)) as StatusResponse;
+
+  if (!res.ok) {
+    let detail = "";
+    try {
+      detail = await res.text();
+    } catch {
+      /* ignore */
+    }
+    throw new Error(`${res.status} ${detail || res.statusText}`.trim());
+  }
+
+  const ct = res.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    // p.ej. 204 No Content
+    return undefined as unknown as T;
+  }
+  return res.json() as Promise<T>;
 }
 
-export function artifactUrl(relOrAbsPath: string): string {
-  if (!relOrAbsPath) return '';
-  return relOrAbsPath.startsWith('/') ? relOrAbsPath : `/${relOrAbsPath}`;
+/* ======================== AUTH (passwordless) ======================== */
+
+export type User = { id: string; email: string; name?: string; plan?: string } | null;
+
+/** Nombres originales que ya usabas */
+export const requestMagic = (email: string, name?: string) =>
+  http<{ ok: true }>("/api/auth/request", {
+    method: "POST",
+    body: JSON.stringify({ email, name }),
+  });
+
+export const verifyMagic = (params: { token?: string; email?: string; code?: string }) =>
+  http<{ ok: true; user: NonNullable<User> }>("/api/auth/verify", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+
+export const logout = () =>
+  http<{ ok: true }>("/api/auth/logout", { method: "POST" });
+
+export const me = () => http<{ user: User }>("/api/auth/me");
+
+/** Aliases (por si en otras partes usas estos nombres) */
+export const authRequestLogin = (email: string, name = "") => requestMagic(email, name);
+export const authVerifyToken = (token: string) => verifyMagic({ token });
+export const authVerifyOtp = (email: string, code: string) => verifyMagic({ email, code });
+export const authLogout = () => logout();
+export const authMe = () => me();
+
+/* ======================== API de procesos ======================== */
+
+export async function uploadFile(file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  // NO agregamos Content-Type, el navegador pone el boundary correcto.
+  const res = await fetch(API + "/api/process", {
+    method: "POST",
+    credentials: "include",
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export const getStatus = (id: string) => http(`/api/status/${id}`);
+
+export function artifactUrl(rel: string) {
+  return API + "/" + rel.replace(/^\/+/, "");
 }
