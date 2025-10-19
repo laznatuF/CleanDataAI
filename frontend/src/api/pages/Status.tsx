@@ -28,11 +28,8 @@ export default function StatusPage() {
 
   const [data, setData] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Toggle para mostrar/ocultar el reporte embebido
   const [showProfile, setShowProfile] = useState(false);
 
-  // Polling
   useEffect(() => {
     if (!runId) return;
     let timer: number | undefined;
@@ -79,7 +76,7 @@ export default function StatusPage() {
   const steps: StepItem[] = useMemo(() => {
     if (!data) return STAGES.map((label) => ({ label, state: "pending" as const }));
 
-    const proc = String(data.status ?? "");
+    const proc = String(data?.status ?? "");
     if (PROCESS_FINISHED.has(proc)) return STAGES.map((label) => ({ label, state: "ok" as const }));
     if (proc === "failed")         return STAGES.map((label) => ({ label, state: "failed" as const }));
     if (PROCESS_QUEUED.has(proc))  return STAGES.map((label) => ({ label, state: "pending" as const }));
@@ -106,11 +103,9 @@ export default function StatusPage() {
   const failed     = String(data?.status ?? "") === "failed";
   const queued     = PROCESS_QUEUED.has(String(data?.status ?? ""));
 
-  // Artefacto de perfilado
   const perfilHtml = data?.artifacts?.["reporte_perfilado.html"];
   const perfilHref = perfilHtml ? artifactUrl(perfilHtml) : null;
 
-  // Si aparece el artefacto, abrir por defecto; si desaparece, cerrar
   useEffect(() => {
     if (perfilHref) setShowProfile(true);
     else setShowProfile(false);
@@ -120,7 +115,8 @@ export default function StatusPage() {
     <div className="min-h-screen bg-white text-slate-800">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 sm:px-5 py-8 sm:py-10">
+      {/* ancho amplio para ver mejor el perfilado */}
+      <main className="mx-auto w-full max-w-[1400px] px-6 md:px-8 py-8 md:py-10">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-10">
           <div className="flex items-center justify-between gap-4">
             <h1 className="text-xl md:text-2xl font-semibold">Ejecución</h1>
@@ -169,10 +165,9 @@ export default function StatusPage() {
 
           {loading && <div className="mt-4 text-sm text-slate-500">Cargando…</div>}
 
-          {/* ======= Sección PERFILADO (estética + izquierda) ======= */}
+          {/* ======= Perfilado ======= */}
           {perfilHref && (
             <section className="mt-10">
-              {/* Encabezado alineado a la izquierda con línea a la derecha */}
               <div className="flex items-center gap-3">
                 <h2 className="text-base font-semibold text-slate-800">Perfilado</h2>
 
@@ -190,10 +185,10 @@ export default function StatusPage() {
                     fill="none"
                     className={`w-4 h-4 transition-transform ${showProfile ? "rotate-180" : ""}`}
                   >
-                    {/* caret ^ (se invierte al abrir) */}
                     <path strokeWidth="1.8" d="M6 15l6-6 6 6" />
                   </svg>
-                  <span className="text-sm underline decoration-dotted">
+                  {/* ← quitamos subrayado punteado */}
+                  <span className="text-sm">
                     {showProfile ? "ocultar" : "mostrar"}
                   </span>
                 </button>
@@ -201,7 +196,6 @@ export default function StatusPage() {
                 <div className="flex-1 h-px bg-slate-200" />
               </div>
 
-              {/* Contenido con transición suave (max-height + opacity) */}
               <div
                 id="perfilado-panel"
                 className={`mt-4 overflow-hidden transition-[max-height,opacity] duration-300 ${
@@ -212,20 +206,22 @@ export default function StatusPage() {
                   <iframe
                     src={perfilHref}
                     title="Reporte de perfilado"
-                    className="w-full h-[70vh] bg-white"
+                    className="w-full h-[72vh] bg-white"
                   />
                 </div>
-                <div className="mt-2 text-xs text-slate-500">
-                  Si el reporte no carga correctamente,{" "}
-                  <a
-                    className="text-sky-600 hover:underline"
-                    target="_blank"
-                    rel="noreferrer"
-                    href={perfilHref}
-                  >
-                    ábrelo en una pestaña nueva
-                  </a>.
-                </div>
+              </div>
+
+              {/* mensaje externo (se mantiene) */}
+              <div className="mt-2 text-xs text-slate-500">
+                Si el reporte no carga correctamente,{" "}
+                <a
+                  className="text-sky-600 hover:underline"
+                  target="_blank"
+                  rel="noreferrer"
+                  href={perfilHref}
+                >
+                  ábrelo en una pestaña nueva
+                </a>.
               </div>
             </section>
           )}

@@ -16,7 +16,7 @@ from app.utils.files import (
 from app.services.ingestion import read_dataframe
 from app.services.profiling import generate_profile_html
 from app.core.config import BASE_DIR, RUNS_DIR
-# ⬇️ Normalizador de fechas sin warnings y helper de inferencia
+# Normalizador de fechas sin warnings + helper de parsing
 from app.services.dates import normalize_dates_in_df, parse_dates_series
 
 # Modelo de etapas mostrado en el front
@@ -61,8 +61,7 @@ def infer_column_type(series: pd.Series) -> str:
     if s.str.lower().isin({"0", "1", "true", "false", "sí", "si", "no"}).all():
         return "bool"
 
-    # moneda (símbolos o patrón al inicio tipo CLP 1000)
-    # (threshold >50% para considerarla moneda)
+    # moneda (símbolos o patrón al inicio tipo "CLP 1000")
     if s.str.contains(r"[$€£]|^\s*[A-Z]{2,3}\s*\d", regex=True).mean() > 0.5:
         return "moneda"
 
@@ -73,7 +72,7 @@ def infer_column_type(series: pd.Series) -> str:
 
     # numérico (limpiando miles/punto decimal)
     sn = (
-        s.str.replace(r"[.\s]", "", regex=True)  # quita puntos y espacios (miles)
+        s.str.replace(r"[.\s]", "", regex=True)  # quita puntos/espacios (miles)
          .str.replace(",", ".", regex=False)     # coma -> punto decimal
     )
     num = pd.to_numeric(sn, errors="coerce")
@@ -154,9 +153,10 @@ def process_pipeline(proc_id: str) -> None:
         # 2) Normalización de fechas (ISO 8601) sin warnings (RFN15)
         #    Detecta columnas "fecha" por porcentaje de parseo y normaliza a 'YYYY-MM-DD'
         inferred_dates = normalize_dates_in_df(df, min_success_ratio=0.5)  # {"col": "date"}
+
         # 3) Inferencia de tipos (RFN20) tras normalizar fechas
         roles = infer_types(df)
-        # Integra las columnas normalizadas como 'fecha' en el idioma del rol
+        # Forzamos a 'fecha' las columnas que el normalizador detectó
         for col in inferred_dates.keys():
             roles[col] = "fecha"
 
@@ -165,12 +165,16 @@ def process_pipeline(proc_id: str) -> None:
         status["progress"] = 45
         _write_status(proc_id, status)
 
-        # 4) Perfilado → HTML (RFN21)
+        # 4) Perfilado → HTML (RFN21) con roles para mostrar la columna "Rol"
         artifacts = Path(BASE_DIR) / "runs" / proc_id / "artifacts"
-        profile_path = generate_profile_html(df, artifacts, Path(BASE_DIR) / "templates")
+        profile_path = generate_profile_html(
+            df, artifacts, Path(BASE_DIR) / "templates", roles=roles
+        )
 
         # Registrar artefacto relativo a BASE_DIR
-        status["artifacts"]["reporte_perfilado.html"] = str(profile_path.relative_to(BASE_DIR))
+        status["artifacts"]["reporte_perfilado.html"] = str(
+            profile_path.relative_to(BASE_DIR)
+        )
 
         # Marcar etapa Perfilado como ok
         for s in status["steps"]:
@@ -179,7 +183,7 @@ def process_pipeline(proc_id: str) -> None:
 
         # 5) Finalizar mini-hito
         status["current_step"] = "Reporte"
-        status["status"] = "completed"   # alias aceptado por tus tests
+        status["status"] = "completed"   # alias aceptado por los tests
         status["progress"] = 100
         _write_status(proc_id, status)
 

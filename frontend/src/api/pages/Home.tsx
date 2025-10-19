@@ -10,35 +10,67 @@ const MAX_MB = 20; // visual; el backend valida con MAX_FILE_SIZE_MB
 export default function Home() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [over, setOver] = useState(false);
-  const [busy, setBusy] = useState(false);
+
+  const [over, setOver] = useState(false);           // estado de drag-over
+  const [busy, setBusy] = useState(false);           // subiendo/procesando
   const [error, setError] = useState<string | null>(null);
+
+  const [file, setFile] = useState<File | null>(null); // archivo seleccionado (no subido)
 
   function openDialog() {
     inputRef.current?.click();
   }
 
-  function validateClient(file: File): string | null {
+  function clearInputControl() {
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function validateClient(f: File): string | null {
     const okType = ACCEPT.split(",").some((ext) =>
-      file.name.toLowerCase().endsWith(ext.trim())
+      f.name.toLowerCase().endsWith(ext.trim())
     );
     if (!okType) return "Formato no soportado. Usa CSV, ODS, XLSX o XLS.";
     const maxBytes = MAX_MB * 1024 * 1024;
-    if (file.size > maxBytes) {
-      const mb = (file.size / 1024 / 1024).toFixed(2);
+    if (f.size > maxBytes) {
+      const mb = (f.size / 1024 / 1024).toFixed(2);
       return `Archivo demasiado grande (${mb} MB). Límite permitido: ${MAX_MB} MB.`;
     }
     return null;
   }
 
-  async function handlePicked(file: File | null) {
-    if (!file) return;
-    const msg = validateClient(file);
-    if (msg) return setError(msg);
+  // Solo guarda/valida el archivo. No sube ni navega aún.
+  function pickFile(f: File | null) {
+    if (!f) return;
+    const msg = validateClient(f);
+    if (msg) {
+      setError(msg);
+      setFile(null);
+      return;
+    }
+    setError(null);
+    setFile(f);
+  }
+
+  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    pickFile(e.target.files?.[0] ?? null);
+    clearInputControl(); // permite volver a elegir el mismo archivo luego
+  }
+
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setOver(false);
+    pickFile(e.dataTransfer.files?.[0] ?? null);
+  }
+
+  async function onProcess() {
+    if (!file) {
+      setError("Selecciona un archivo antes de procesar.");
+      return;
+    }
     try {
       setBusy(true);
       setError(null);
-      const res = await uploadFile(file);
+      const res = await uploadFile(file); // aquí recién llamamos al backend
       const pid = res.process_id || res.id;
       navigate(`/status/${pid}`);
     } catch (e) {
@@ -48,26 +80,24 @@ export default function Home() {
     }
   }
 
-  function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    handlePicked(e.target.files?.[0] ?? null);
-    if (inputRef.current) inputRef.current.value = "";
+  function removeFile() {
+    setFile(null);
+    setError(null);
   }
 
-  function onDrop(e: React.DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setOver(false);
-    handlePicked(e.dataTransfer.files?.[0] ?? null);
-  }
+  const fileInfo =
+    file &&
+    `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 sm:px-5 py-8 sm:py-10">
+      <main className="mx-auto w-full max-w-[1200px] px-6 md:px-8 py-8 md:py-10">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-10">
           <h1 className="text-xl md:text-2xl font-semibold">Sube tu archivo</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Automatiza limpiar y preparar tus planillas en minutos.
+            Automatiza la limpieza y prepara tus planillas en minutos.
           </p>
 
           <div className="mt-8">
@@ -106,18 +136,38 @@ export default function Home() {
                 </svg>
               </div>
 
-              <div className="text-sm text-slate-600">Arrastra tu archivo aquí</div>
+              <div className="text-sm text-slate-600">
+                {file ? "Archivo listo para procesar" : "Arrastra tu archivo aquí"}
+              </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={openDialog}
                   className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-white text-sm font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-600 disabled:opacity-60"
                   disabled={busy}
                 >
-                  Examinar
+                  {file ? "Cambiar" : "Examinar"}
                 </button>
+
+                {file && (
+                  <button
+                    type="button"
+                    onClick={removeFile}
+                    className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
+                    disabled={busy}
+                  >
+                    Quitar
+                  </button>
+                )}
               </div>
+
+              {/* Info del archivo seleccionado */}
+              {file && (
+                <div className="mt-4 text-sm text-slate-500">
+                  {fileInfo}
+                </div>
+              )}
             </div>
 
             <div className="mt-3 text-center text-[12px] text-slate-500">
@@ -128,13 +178,17 @@ export default function Home() {
           <div className="mt-8 flex items-center gap-4">
             <button
               type="button"
-              onClick={openDialog}
+              onClick={onProcess}
               className="inline-flex items-center rounded-md border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
-              disabled={busy}
+              disabled={busy || !file}
+              title={!file ? "Selecciona un archivo para continuar" : "Procesar"}
             >
               Procesar
             </button>
-            {busy && <span className="text-sm text-slate-500">Subiendo y creando proceso…</span>}
+
+            {busy && (
+              <span className="text-sm text-slate-500">Subiendo y creando proceso…</span>
+            )}
           </div>
 
           {error && (
