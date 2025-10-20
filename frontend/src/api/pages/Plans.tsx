@@ -209,7 +209,7 @@ export default function PlansPage() {
 
         {!loading && (
           <p className="mt-8 text-center text-xs text-slate-400">
-            Los precios son de ejemplo. Ajusta moneda e impuestos según tu región. Puedes cancelar en cualquier momento.
+           Planes
           </p>
         )}
       </main>
