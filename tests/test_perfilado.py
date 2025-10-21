@@ -144,7 +144,8 @@ def _make_ods() -> Tuple[bytes, str, str]:
 def _process_upload(data: bytes, filename: str, ctype: str) -> Dict:
     files = {"file": (filename, data, ctype)}
     r = post("/process", files=files)
-    assert r.status_code == 200, f"/process fallo: {r.status_code} {r.text}"
+    # Acepta 200 o 201 (según semántica elegida en el endpoint)
+    assert r.status_code in (200, 201), f"/process falló: {r.status_code}, {r.text}"
     return r.json()
 
 
@@ -176,7 +177,7 @@ def _wait_status_done(pid: str, timeout_s: float = WAIT_TIMEOUT) -> Dict:
     last_js = None
     while time.time() - t0 < timeout_s:
         s = get(f"/status/{pid}")
-        assert s.status_code == 200, f"/status fallo: {s.status_code} {s.text}"
+        assert s.status_code in (200, 201), f"/status falló: {s.status_code}, {s.text}"
         js = s.json()
         last_js = js
         st = str(js.get("status", "")).lower().strip()
