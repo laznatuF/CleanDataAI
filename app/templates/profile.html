@@ -1,0 +1,77 @@
+ <!-- templates/profile.html -->
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root {
+      --bg:#fff; --fg:#111; --muted:#6b7280;
+      --border:#e5e7eb; --soft:#f8fafc;
+      --ok:#16a34a; --warn:#f59e0b; --err:#dc2626;
+      --pill:#eef2ff; --pill-fg:#3730a3;
+    }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial; color:var(--fg); background:var(--bg); margin:24px;}
+    h1 { font-size:20px; margin:0 0 12px;}
+    .meta { color:var(--muted); font-size:12px; margin-bottom:16px;}
+    table { width:100%; border-collapse:collapse; background:var(--bg); border:1px solid var(--border);}
+    th, td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; font-size:14px;}
+    th { background:var(--soft); text-align:left; white-space:nowrap;}
+    tr:hover td { background:#fafafa;}
+    .muted { color:var(--muted);}
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px;}
+    .badges { display:flex; gap:6px; flex-wrap:wrap; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:var(--pill); color:var(--pill-fg); border:1px solid #e0e7ff;}
+    .alert { background:#fff7ed; color:#9a3412; border-color:#fed7aa;}
+    .nowrap { white-space:nowrap;}
+  </style>
+</head>
+<body>
+  <h1>{{ title }}</h1>
+  <div class="meta">Filas: {{ n_rows }} · Columnas: {{ n_cols }}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Columna</th>
+        <th>Tipo (inferido)</th>
+        <th>Rol</th>
+        <th>Únicos<br/><span class="muted">(n / %)</span></th>
+        <th>Nulos<br/><span class="muted">(n / %)</span></th>
+        <th>Detalles</th>
+        <th>Ejemplos</th>
+        <th>Alertas</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="code">{{ r.col }}</td>
+        <td class="nowrap">{{ r.dtype }}</td>
+        <td>
+          <span class="badge">{{ r.role }}</span>
+        </td>
+        <td class="nowrap">{{ r.uniques }} <span class="muted">({{ r.uniques_pct }})</span></td>
+        <td class="nowrap">{{ r.nulls }} <span class="muted">({{ r.nulls_pct }})</span></td>
+        <td>{{ r.details }}</td>
+        <td class="code">{{ r.examples | join(", ") }}</td>
+        <td>
+          {% if r.alerts and r.alerts|length %}
+            <div class="badges">
+              {% for a in r.alerts %}
+                <span class="badge alert">{{ a }}</span>
+              {% endfor %}
+            </div>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+</body>
+</html>
+

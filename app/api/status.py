@@ -2,7 +2,7 @@
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
 from app.core.config import RUNS_DIR
-from app.utils.files import read_json
+from app.infrastructure.files import read_json
 
 router = APIRouter()
 
