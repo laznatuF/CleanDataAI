@@ -5,10 +5,6 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-# ------------------------
-# Helpers para métricas
-# ------------------------
-
 def _fmt_pct(x: float, total: int) -> str:
     if total <= 0:
         return "0.00%"
@@ -90,14 +86,8 @@ def _moneda_details(s: pd.Series) -> str:
     vc = ss.value_counts()
     return "top3=" + ", ".join([f"{k}({v})" for k, v in vc.head(3).items()])
 
-# ------------------------
-# Heurística de rol
-# ------------------------
-
 def infer_role(col: str, s: pd.Series) -> str:
     name = col.lower().strip()
-
-    # Pistas por nombre
     if any(k in name for k in ["fecha", "date", "fcha"]):
         return "fecha"
     if any(k in name for k in ["monto", "importe", "amount", "total"]):
@@ -111,7 +101,6 @@ def infer_role(col: str, s: pd.Series) -> str:
     if any(k in name for k in ["cat", "tipo", "segmento", "grupo", "clase"]):
         return "categoría"
 
-    # Pistas por contenido
     ss = s.dropna().astype(str).str.strip()
     parsed = pd.to_datetime(ss, errors="coerce", dayfirst=True, utc=False)
     if parsed.notna().mean() >= 0.7:
@@ -146,28 +135,20 @@ def alerts_for(role: str, col: str, s: pd.Series, n_rows: int) -> List[str]:
     nulls = int(s.isna().sum())
     if n_rows > 0 and nulls == n_rows:
         alerts.append("100% nulos")
-
     if role == "id":
         dup = int((s.duplicated(keep=False)).sum())
         if dup > 0:
             alerts.append(f"duplicados={dup}")
-
     if role == "fecha":
         dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
         ok = int(dt.notna().sum())
         if ok / max(1, n_rows) < 0.7:
             alerts.append("baja_lectura_fechas")
-
     if role in {"monto", "numérico"}:
         cnt = _tukey_outliers_count(s)
         if cnt > 0:
             alerts.append(f"outliers_Tukey={cnt}")
-
     return alerts
-
-# ------------------------
-# Motor de plantilla
-# ------------------------
 
 def generate_profile_html(
     df: pd.DataFrame,
@@ -175,11 +156,6 @@ def generate_profile_html(
     templates_dir: Path,
     roles: Optional[Dict[str, str]] = None,
 ) -> Path:
-    """
-    Genera artifacts/reporte_perfilado.html usando templates/profile.html.
-    Columnas:
-      Columna | Tipo (inferido) | Rol | Únicos (n/%) | Nulos (n/%) | Detalles | Ejemplos | Alertas
-    """
     artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     n_rows = int(df.shape[0])
@@ -214,13 +190,11 @@ def generate_profile_html(
             }
         )
 
-    # Render con Jinja2
     env = Environment(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=select_autoescape(["html", "xml"]),
     )
 
-    # Fallback amistoso si falta el template (para que el pipeline no falle)
     template_name = "profile.html"
     try:
         tpl = env.get_template(template_name)
@@ -231,7 +205,7 @@ def generate_profile_html(
             title="Reporte de Perfilado",
         )
     except Exception:
-        # Plantilla mínima de emergencia
+        # Fallback mínimo si el template no existe
         table_rows = "\n".join(
             f"<tr><td>{r['col']}</td><td>{r['dtype']}</td><td>{r['role']}</td>"
             f"<td>{r['uniques']} ({r['uniques_pct']})</td>"
