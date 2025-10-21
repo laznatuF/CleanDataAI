@@ -1,8 +1,7 @@
-# app/services/profiling.py
 from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-import math
+
 import pandas as pd
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -37,8 +36,7 @@ def _tukey_outliers_count(num: pd.Series) -> int:
     return int(((s < lo) | (s > hi)).sum())
 
 def _num_details(s: pd.Series) -> str:
-    sn = pd.to_numeric(s, errors="coerce")
-    sn = sn.dropna()
+    sn = pd.to_numeric(s, errors="coerce").dropna()
     if sn.empty:
         return "—"
     p5 = sn.quantile(0.05)
@@ -93,8 +91,7 @@ def _moneda_details(s: pd.Series) -> str:
     return "top3=" + ", ".join([f"{k}({v})" for k, v in vc.head(3).items()])
 
 # ------------------------
-# Heurística de rol (coincide con RFN20/60–62)
-# Puedes afinarla cuando quieras.
+# Heurística de rol
 # ------------------------
 
 def infer_role(col: str, s: pd.Series) -> str:
@@ -116,19 +113,20 @@ def infer_role(col: str, s: pd.Series) -> str:
 
     # Pistas por contenido
     ss = s.dropna().astype(str).str.strip()
-    # ¿fecha?
     parsed = pd.to_datetime(ss, errors="coerce", dayfirst=True, utc=False)
     if parsed.notna().mean() >= 0.7:
         return "fecha"
-    # ¿numérico?
-    numeric = pd.to_numeric(ss.str.replace(r"[.\s]", "", regex=True).str.replace(",", ".", regex=False), errors="coerce")
+
+    numeric = pd.to_numeric(
+        ss.str.replace(r"[.\s]", "", regex=True).str.replace(",", ".", regex=False),
+        errors="coerce",
+    )
     if numeric.notna().mean() >= 0.8:
         return "numérico"
-    # ¿bool?
+
     if ss.str.lower().isin({"0","1","true","false","sí","si","no"}).mean() >= 0.9:
         return "bool"
 
-    # fallback
     return "texto"
 
 def details_by_role(role: str, s: pd.Series) -> str:
@@ -141,7 +139,6 @@ def details_by_role(role: str, s: pd.Series) -> str:
         return _bool_details(s)
     if role == "moneda":
         return _moneda_details(s)
-    # texto / categoría / id
     return _text_details(s)
 
 def alerts_for(role: str, col: str, s: pd.Series, n_rows: int) -> List[str]:
@@ -150,20 +147,17 @@ def alerts_for(role: str, col: str, s: pd.Series, n_rows: int) -> List[str]:
     if n_rows > 0 and nulls == n_rows:
         alerts.append("100% nulos")
 
-    # duplicados si parece id
     if role == "id":
         dup = int((s.duplicated(keep=False)).sum())
         if dup > 0:
             alerts.append(f"duplicados={dup}")
 
-    # fechas mal parseadas
     if role == "fecha":
         dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
         ok = int(dt.notna().sum())
         if ok / max(1, n_rows) < 0.7:
             alerts.append("baja_lectura_fechas")
 
-    # outliers numéricos
     if role in {"monto", "numérico"}:
         cnt = _tukey_outliers_count(s)
         if cnt > 0:
@@ -182,7 +176,8 @@ def generate_profile_html(
     roles: Optional[Dict[str, str]] = None,
 ) -> Path:
     """
-    Genera templates/profile.html con columnas:
+    Genera artifacts/reporte_perfilado.html usando templates/profile.html.
+    Columnas:
       Columna | Tipo (inferido) | Rol | Únicos (n/%) | Nulos (n/%) | Detalles | Ejemplos | Alertas
     """
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -192,25 +187,16 @@ def generate_profile_html(
 
     for col in df.columns:
         s = df[col]
-        # Tipo 'crudo'
         dtype = str(s.dtype)
-
-        # Rol inferido
         role = (roles or {}).get(col) or infer_role(col, s)
 
-        # Únicos / Nulos
         uniques = int(s.nunique(dropna=True))
         nulls = int(s.isna().sum())
         uniques_pct = _fmt_pct(uniques, n_rows)
         nulls_pct = _fmt_pct(nulls, n_rows)
 
-        # Detalles (contextual por rol)
         det = details_by_role(role, s)
-
-        # Ejemplos
         ex = _examples(s, k=5)
-
-        # Alertas
         al = alerts_for(role, col, s, n_rows)
 
         rows.append(
@@ -228,18 +214,54 @@ def generate_profile_html(
             }
         )
 
+    # Render con Jinja2
     env = Environment(
         loader=FileSystemLoader(str(templates_dir)),
         autoescape=select_autoescape(["html", "xml"]),
     )
 
-    tpl = env.get_template("profile.html")
-    html = tpl.render(
-        n_rows=n_rows,
-        n_cols=int(df.shape[1]),
-        rows=rows,
-        title="Reporte de Perfilado",
-    )
+    # Fallback amistoso si falta el template (para que el pipeline no falle)
+    template_name = "profile.html"
+    try:
+        tpl = env.get_template(template_name)
+        html = tpl.render(
+            n_rows=n_rows,
+            n_cols=int(df.shape[1]),
+            rows=rows,
+            title="Reporte de Perfilado",
+        )
+    except Exception:
+        # Plantilla mínima de emergencia
+        table_rows = "\n".join(
+            f"<tr><td>{r['col']}</td><td>{r['dtype']}</td><td>{r['role']}</td>"
+            f"<td>{r['uniques']} ({r['uniques_pct']})</td>"
+            f"<td>{r['nulls']} ({r['nulls_pct']})</td>"
+            f"<td>{r['details']}</td>"
+            f"<td>{', '.join(r['examples'])}</td>"
+            f"<td>{', '.join(r['alerts'])}</td></tr>"
+            for r in rows
+        )
+        html = f"""
+        <html>
+          <head><meta charset="utf-8"><title>Reporte de Perfilado</title></head>
+          <body>
+            <h1>Reporte de Perfilado</h1>
+            <p><em>Plantilla '{template_name}' no encontrada. Usando fallback.</em></p>
+            <p>Filas: {n_rows} · Columnas: {int(df.shape[1])}</p>
+            <table border="1" cellspacing="0" cellpadding="4">
+              <thead>
+                <tr>
+                  <th>Columna</th><th>Tipo</th><th>Rol</th>
+                  <th>Únicos</th><th>Nulos</th><th>Detalles</th><th>Ejemplos</th><th>Alertas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {table_rows}
+              </tbody>
+            </table>
+          </body>
+        </html>
+        """
 
     out = artifacts_dir / "reporte_perfilado.html"
     out.write_text(html, encoding="utf-8")

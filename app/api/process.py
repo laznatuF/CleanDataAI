@@ -1,6 +1,6 @@
 # app/api/process.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
-from app.services.pipeline import create_initial_process, process_pipeline
+from app.application.pipeline import create_initial_process, process_pipeline
 
 router = APIRouter()
 

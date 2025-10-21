@@ -1,4 +1,4 @@
-# app/services/users.py
+# app/infrastructure/users.py
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from pathlib import Path
