@@ -1,19 +1,20 @@
 # app/api/process.py
+from __future__ import annotations
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, status
+from fastapi.responses import JSONResponse
 
 from app.core.config import ALLOWED_EXTENSIONS
 from app.application.pipeline import create_initial_process, process_pipeline
 
 router = APIRouter()
 
-
-@router.post("/process")
+@router.post("/process", status_code=status.HTTP_201_CREATED)
 def process_file(background: BackgroundTasks, file: UploadFile = File(...)):
     """
     Crea un proceso (status: queued), guarda el archivo y lanza el pipeline en background.
-    Devuelve: {"id", "process_id", "status":"queued"}
+    Devuelve el identificador del proceso con HTTP 201 Created.
     """
     # 1) Validaciones básicas del upload
     if not file or not file.filename:
@@ -40,5 +41,7 @@ def process_file(background: BackgroundTasks, file: UploadFile = File(...)):
     # 3) Ejecutar pipeline en background
     background.add_task(process_pipeline, process_id)
 
-    # 4) Respuesta
-    return {"id": process_id, "process_id": process_id, "status": "queued"}
+    # 4) Respuesta explícita 201 (evita que algún middleware responda 200)
+    payload = {"id": process_id, "process_id": process_id, "status": "queued"}
+    return JSONResponse(content=payload, status_code=status.HTTP_201_CREATED)
+

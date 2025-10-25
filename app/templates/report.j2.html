@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>{{ title or "Reporte de Calidad de Datos" }}</title>
+  <style>
+    :root { --fg:#0f172a; --muted:#475569; --accent:#0ea5e9; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"; color: var(--fg); margin: 28px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    h2 { font-size: 16px; margin: 20px 0 8px; color: var(--muted); }
+    .meta { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+    .kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 12px 0 8px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; }
+    .label { font-size: 11px; color: var(--muted); }
+    .value { font-size: 18px; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 18px; }
+    th, td { border: 1px solid #e2e8f0; padding: 6px 8px; font-size: 12px; }
+    th { background: #f8fafc; text-align: left; }
+    .links a { color: var(--accent); text-decoration: none; }
+    .small { font-size: 11px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>{{ title or "Reporte de Calidad de Datos" }}</h1>
+  <div class="meta">
+    Generado: {{ generated_at }} · Proceso: {{ process_id }}
+  </div>
+
+  <div class="kpis">
+    <div class="card">
+      <div class="label">Filas</div>
+      <div class="value">{{ quality.rows }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Columnas</div>
+      <div class="value">{{ quality.cols }}</div>
+    </div>
+    <div class="card">
+      <div class="label">% nulos (global)</div>
+      <div class="value">{{ "%.2f"|format(quality.missing_overall_pct) }}%</div>
+    </div>
+  </div>
+
+  <h2>Resumen de limpieza</h2>
+  <table>
+    <tbody>
+      {% for k, v in clean_summary.items() %}
+      <tr><th>{{ k }}</th><td>{{ v }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if quality.missing_by_col_pct %}
+  <h2>Top columnas por % de nulos</h2>
+  <table>
+    <thead><tr><th>Columna</th><th>% nulos</th></tr></thead>
+    <tbody>
+      {% for col, pct in quality.missing_by_col_pct.items() %}
+      <tr><td>{{ col }}</td><td>{{ "%.2f"|format(pct) }}%</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if outliers %}
+  <h2>Outliers (IsolationForest)</h2>
+  <table>
+    <tbody>
+      <tr><th>Columnas usadas</th><td>{{ outliers.used_columns|join(", ") }}</td></tr>
+      <tr><th>Contamination</th><td>{{ outliers.contamination }}</td></tr>
+      <tr><th>Outliers detectados</th><td>{{ outliers.outliers }} / {{ outliers.total }} ({{ "%.2f"|format(outliers.ratio * 100) }}%)</td></tr>
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h2>Artefactos</h2>
+  <div class="links small">
+    {% if links.reporte_perfilado %}<div>Perfilado: {{ links.reporte_perfilado }}</div>{% endif %}
+    {% if links.dashboard %}<div>Dashboard: {{ links.dashboard }}</div>{% endif %}
+    {% if links.clean_csv %}<div>CSV limpio: {{ links.clean_csv }}</div>{% endif %}
+  </div>
+</body>
+</html>

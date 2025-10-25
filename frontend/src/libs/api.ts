@@ -27,7 +27,7 @@ async function http<T = any>(url: string, opts: RequestInit = {}): Promise<T> {
 
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
-    // p.ej. 204 No Content
+    // p.ej. 204 No Content o descargas de archivo
     return undefined as unknown as T;
   }
   return res.json() as Promise<T>;
@@ -37,7 +37,6 @@ async function http<T = any>(url: string, opts: RequestInit = {}): Promise<T> {
 
 export type User = { id: string; email: string; name?: string; plan?: string } | null;
 
-/** Nombres originales que ya usabas */
 export const requestMagic = (email: string, name?: string) =>
   http<{ ok: true }>("/api/auth/request", {
     method: "POST",
@@ -50,12 +49,11 @@ export const verifyMagic = (params: { token?: string; email?: string; code?: str
     body: JSON.stringify(params),
   });
 
-export const logout = () =>
-  http<{ ok: true }>("/api/auth/logout", { method: "POST" });
+export const logout = () => http<{ ok: true }>("/api/auth/logout", { method: "POST" });
 
 export const me = () => http<{ user: User }>("/api/auth/me");
 
-/** Aliases (por si en otras partes usas estos nombres) */
+/** Aliases (compat) */
 export const authRequestLogin = (email: string, name = "") => requestMagic(email, name);
 export const authVerifyToken = (token: string) => verifyMagic({ token });
 export const authVerifyOtp = (email: string, code: string) => verifyMagic({ email, code });
@@ -79,6 +77,28 @@ export async function uploadFile(file: File) {
 
 export const getStatus = (id: string) => http(`/api/status/${id}`);
 
+/** Construye URL a artefactos protegidos por el backend.
+ * Si recibe "runs/<id>/artifacts/<name>", lo mapea a "/api/artifacts/<id>/<name>".
+ * Para cualquier otra ruta relativa, hace fallback a `${API}/${rel}`. */
 export function artifactUrl(rel: string) {
-  return API + "/" + rel.replace(/^\/+/, "");
+  const clean = (rel || "").replace(/^\/+/, "");
+  const m = clean.match(/^runs\/([^/]+)\/artifacts\/([^/]+)$/i);
+  if (m) {
+    const [, pid, name] = m;
+    return `${API}/api/artifacts/${encodeURIComponent(pid)}/${encodeURIComponent(name)}`;
+  }
+  return `${API}/${clean}`;
 }
+
+/** Igual que artifactUrl, pero fuerza descarga con `?download=1` */
+export function artifactDownloadUrl(rel: string) {
+  const url = artifactUrl(rel);
+  return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+}
+
+/* ======================== Bitácora ======================== */
+
+export const getHistory = (id: string, limit?: number) =>
+  http<{ items: any[]; count: number }>(
+    `/api/history/${encodeURIComponent(id)}${limit ? `?limit=${limit}` : ""}`
+  );
