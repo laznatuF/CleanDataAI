@@ -7,5 +7,14 @@
     "created_at": "2025-10-21T04:50:27.013119Z",
     "updated_at": "2025-10-21T04:50:27.013119Z",
     "process_count": 0
+  },
+  {
+    "id": "7ff3eef7b8364ec3a46270cb1b084b13",
+    "email": "ejemploe@mail.com",
+    "name": "ejemplo",
+    "plan": "free",
+    "created_at": "2025-10-21T22:51:29.116560Z",
+    "updated_at": "2025-10-21T22:51:29.116560Z",
+    "process_count": 0
   }
 ]

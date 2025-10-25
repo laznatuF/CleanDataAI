@@ -1,13 +1,26 @@
 fastapi==0.111.0
 uvicorn[standard]==0.30.0
-pandas==2.2.3          
-numpy>=2.1,<3         
-jinja2==3.1.4
-python-multipart==0.0.9
+
+# Núcleo de datos
+numpy>=2.1,<3
+pandas==2.2.3
+scipy>=1.13
+scikit-learn>=1.4.2
+
+# Lectura de archivos
 openpyxl==3.1.2
 xlrd==1.2.0
 odfpy==1.4.1
-pytest==8.2.1
+
+# Web/API y utilidades
+jinja2==3.1.4
+python-multipart==0.0.9
 itsdangerous==2.2.0
+pytest==8.2.1
+
+# Dashboard (si usas Plotly en el paso del dashboard)
+plotly>=5.14
+
+pyyaml==6.0.2
 
 
