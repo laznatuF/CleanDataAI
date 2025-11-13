@@ -287,38 +287,54 @@ export default function StatusPage() {
             </section>
           )}
 
-          {/* ======= Dashboard embebido ======= */}
-          {dashHref && (
-            <section className="mt-10">
-              <div className="flex items-center gap-3">
-                <h2 className="text-base font-semibold text-slate-800">Dashboard</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowDash((v) => !v)}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sky-700 hover:text-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-300"
-                  aria-expanded={showDash}
-                  aria-controls="dashboard-panel"
-                  title={showDash ? "Ocultar" : "Mostrar"}
-                >
-                  <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
-                       className={`w-4 h-4 transition-transform ${showDash ? "rotate-180" : ""}`}>
-                    <path strokeWidth="1.8" d="M6 15l6-6 6 6" />
-                  </svg>
-                  <span className="text-sm">{showDash ? "ocultar" : "mostrar"}</span>
-                </button>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
+      {/* ======= Dashboard embebido ======= */}
+{dashHref && (
+  <section className="mt-10">
+    <div className="flex items-center gap-3">
+      <h2 className="text-base font-semibold text-slate-800">Dashboard</h2>
+      <button
+        type="button"
+        onClick={() => setShowDash((v) => !v)}
+        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sky-700 hover:text-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-300"
+        aria-expanded={showDash}
+        aria-controls="dashboard-panel"
+        title={showDash ? "Ocultar" : "Mostrar"}
+      >
+        <svg viewBox="0 0 24 24" stroke="currentColor" fill="none"
+             className={`w-4 h-4 transition-transform ${showDash ? "rotate-180" : ""}`}>
+          <path strokeWidth="1.8" d="M6 15l6-6 6 6" />
+        </svg>
+        <span className="text-sm">{showDash ? "ocultar" : "mostrar"}</span>
+      </button>
+      <div className="flex-1 h-px bg-slate-200" />
+    </div>
 
-              <div id="dashboard-panel"
-                   className={`mt-4 overflow-hidden transition-[max-height,opacity] duration-300 ${
-                     showDash ? "max-h-[90vh] opacity-100" : "max-h-0 opacity-0"
-                   }`}>
-                <div className="rounded-lg border border-slate-200 overflow-hidden">
-                  <iframe src={dashHref} title="Dashboard" className="w-full h-[72vh] bg-white" />
-                </div>
-              </div>
-            </section>
-          )}
+    {/* 🔗 Hipervínculo solicitado */}
+    <div className="mt-3">
+      <a
+        href={dashHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sky-600 hover:underline underline-offset-2"
+      >
+        haz clic aqui para ver el dashboard mejor en una pestaña aparte
+      </a>
+    </div>
+
+    {/* Opcional: puedes borrar todo el panel de abajo si solo quieres el link */}
+    <div
+      id="dashboard-panel"
+      className={`mt-4 overflow-hidden transition-[max-height,opacity] duration-300 ${
+        showDash ? "max-h-[90vh] opacity-100" : "max-h-0 opacity-0"
+      }`}
+    >
+      <div className="rounded-lg border border-slate-200 overflow-hidden">
+        <iframe src={dashHref} title="Dashboard" className="w-full h-[72vh] bg-white" />
+      </div>
+    </div>
+  </section>
+)}
+
 
           {/* ======= Bitácora ======= */}
           <section className="mt-10">

@@ -1,0 +1,52 @@
+:root{
+  /* Colores de marca */
+  --brand:#F28C18;        /* naranja */
+  --brand-600:#EA7A00;
+  --ink:#2B2F36;          /* grafito / textos */
+  --cream:#F3F2E6;        /* fondo general claro del prototipo */
+  --coral:#EE9E8D;        /* botón redondo subir */
+  --neutral:#6B7280;      /* texto secundario */
+  --white:#FFFFFF;
+
+  /* Superficies */
+  --bg: var(--cream);
+  --card: var(--white);
+  --border:#E7E3D7;
+
+  /* Tipografía y UI */
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  --radius: 16px;
+  --shadow: 0 8px 20px rgba(0,0,0,.06);
+}
+
+/* Global */
+html,body{background:var(--bg);color:var(--ink);font-family:var(--font);}
+a{color:#1E66F5;text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* Tarjetas y contenedores */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* Botones */
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border-radius:12px;
+     border:1px solid transparent;font-weight:700}
+.btn-primary{background:var(--brand);color:#111;border-color:var(--brand-600)}
+.btn-primary:hover{filter:brightness(0.98)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--border)}
+.btn-ghost:hover{background:#fff2e5;border-color:var(--brand)}
+
+/* Header */
+.hdr{margin:16px;border-radius:20px;padding:8px 12px}
+.hdr-inner{display:flex;align-items:center;gap:12px}
+.hdr .logo{height:36px;width:auto}
+.hdr nav{margin-left:auto;display:flex;gap:12px}
+.hdr nav a{padding:8px 10px;border-radius:10px}
+
+/* KPI */
+.kpi-title{font-size:12px;color:var(--neutral);text-transform:uppercase;letter-spacing:.06em}
+.kpi-value{font-size:30px;font-weight:800;margin-top:6px;color:var(--ink)}
+
+/* Botón flotante subir */
+.fab-upload{position:fixed;right:24px;bottom:24px;width:56px;height:56px;border-radius:14px;
+  background:var(--coral);display:grid;place-items:center;color:#fff;font-size:22px;
+  box-shadow:0 10px 30px rgba(238,158,141,.5);border:0;cursor:pointer}
