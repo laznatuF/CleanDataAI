@@ -91,13 +91,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F5F1E4] text-slate-800">
-      {/* Logo + menú hamburguesa flotante (izquierda) */}
+      {/* Logo + menú (modo flotante / barra responsiva) */}
       <Header />
 
-      {/* Contenido principal: debajo y a la derecha del hamburguesa */}
-      {/* 👇 aquí está el cambio: pt-24 (más abajo) y pl-32 (a la derecha del menú) */}
-      <main className="pt-40 pb-16 pr-6 pl-32">
-        <div className="mx-auto flex max-w-6xl items-start gap-10">
+      {/* Contenido principal:
+          - En móvil: margen superior moderado y padding lateral normal.
+          - En desktop: se deja espacio para el menú fijo a la izquierda. */}
+      <main className="pt-28 pb-16 px-4 md:pt-32 md:px-6 lg:pt-40 lg:pl-40 lg:pr-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-start">
           {/* Columna principal: subir archivo */}
           <section className="flex-1">
             <header className="mb-6 text-center">
@@ -109,7 +110,7 @@ export default function Home() {
               </p>
             </header>
 
-            <div className="rounded-3xl border border-[#E4DCCB] bg-white px-6 py-7 md:px-10 md:py-9 shadow-sm">
+            <div className="rounded-3xl border border-[#E4DCCB] bg-white px-4 py-6 shadow-sm sm:px-6 sm:py-7 md:px-10 md:py-9">
               {/* Zona de carga */}
               <div
                 onDragOver={(e) => {
@@ -192,7 +193,7 @@ export default function Home() {
               </div>
 
               {/* Botón procesar + mensajes */}
-              <div className="mt-6 flex items-center gap-4">
+              <div className="mt-6 flex items-center justify-center gap-4">
                 <button
                   type="button"
                   onClick={onProcess}
@@ -220,16 +221,15 @@ export default function Home() {
                 </div>
               )}
 
-              <p className="mt-6 text-[11px] text-slate-400">
+           <p className="mt-6 text-[11px] text-slate-400 text-center">
                 En cumplimiento de privacidad: los archivos temporales se
                 eliminan tras el proceso.
               </p>
             </div>
           </section>
 
-          {/* Columna derecha: GENERA, alineada con el cuadro principal */}
-          {/* mt-14 ya lo teníamos para alinear con el cuadro blanco */}
-          <aside className="w-[320px] shrink-0 mt-21">
+          {/* Columna derecha: GENERA */}
+          <aside className="w-full shrink-0 lg:w-[320px] lg:mt-14">
             <h2 className="text-[11px] font-semibold tracking-[0.18em] text-slate-500">
               GENERA
             </h2>
@@ -351,7 +351,10 @@ export default function Home() {
                       rx="2"
                       strokeWidth={1.8}
                     />
-                    <path d="M9 16h2.2c1.2 0 1.8-.6 1.8-1.6 0-.9-.6-1.6-1.8-1.6H9v3.2Z" strokeWidth={1.4} />
+                    <path
+                      d="M9 16h2.2c1.2 0 1.8-.6 1.8-1.6 0-.9-.6-1.6-1.8-1.6H9v3.2Z"
+                      strokeWidth={1.4}
+                    />
                     <path d="M9 9h6" strokeWidth={1.4} />
                   </svg>
                 </div>
