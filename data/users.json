@@ -16,5 +16,14 @@
     "created_at": "2025-10-21T22:51:29.116560Z",
     "updated_at": "2025-10-21T22:51:29.116560Z",
     "process_count": 0
+  },
+  {
+    "id": "487b34b13d6a413eb162e433fe17804d",
+    "email": "correoejemplo@correo.com",
+    "name": "Daniel",
+    "plan": "free",
+    "created_at": "2025-10-26T21:35:42.239055Z",
+    "updated_at": "2025-10-26T21:35:42.239055Z",
+    "process_count": 0
   }
 ]

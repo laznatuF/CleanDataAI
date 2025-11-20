@@ -11,8 +11,8 @@ export default function Home() {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [over, setOver] = useState(false);           // estado de drag-over
-  const [busy, setBusy] = useState(false);           // subiendo/procesando
+  const [over, setOver] = useState(false); // estado de drag-over
+  const [busy, setBusy] = useState(false); // subiendo/procesando
   const [error, setError] = useState<string | null>(null);
 
   const [file, setFile] = useState<File | null>(null); // archivo seleccionado (no subido)
@@ -90,116 +90,280 @@ export default function Home() {
     `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
 
   return (
-    <div className="min-h-screen bg-white text-slate-800">
+    <div className="min-h-screen bg-[#F5F1E4] text-slate-800">
+      {/* Logo + menú (modo flotante / barra responsiva) */}
       <Header />
 
-      <main className="mx-auto w-full max-w-[1200px] px-6 md:px-8 py-8 md:py-10">
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-10">
-          <h1 className="text-xl md:text-2xl font-semibold">Sube tu archivo</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Automatiza la limpieza y prepara tus planillas en minutos.
-          </p>
+      {/* Contenido principal:
+          - En móvil: margen superior moderado y padding lateral normal.
+          - En desktop: se deja espacio para el menú fijo a la izquierda. */}
+      <main className="pt-28 pb-16 px-4 md:pt-32 md:px-6 lg:pt-40 lg:pl-40 lg:pr-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-start">
+          {/* Columna principal: subir archivo */}
+          <section className="flex-1">
+            <header className="mb-6 text-center">
+              <h1 className="text-2xl font-semibold text-slate-900">
+                Sube tu archivo
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Automatiza la limpieza y prepara tus planillas en segundos.
+              </p>
+            </header>
 
-          <div className="mt-8">
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setOver(true);
-              }}
-              onDragLeave={() => setOver(false)}
-              onDrop={onDrop}
-              className={[
-                "rounded-xl border-2 border-dashed transition-colors",
-                "px-4 sm:px-6 py-10 sm:py-14 text-center",
-                over ? "bg-slate-50 border-slate-400" : "border-slate-300",
-              ].join(" ")}
-              aria-label="Zona para arrastrar o seleccionar archivo"
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") openDialog();
-              }}
-            >
-              <input
-                ref={inputRef}
-                type="file"
-                accept={ACCEPT}
-                className="hidden"
-                onChange={onInputChange}
-              />
+            <div className="rounded-3xl border border-[#E4DCCB] bg-white px-4 py-6 shadow-sm sm:px-6 sm:py-7 md:px-10 md:py-9">
+              {/* Zona de carga */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setOver(true);
+                }}
+                onDragLeave={() => setOver(false)}
+                onDrop={onDrop}
+                className={[
+                  "rounded-2xl border-2 border-dashed transition-colors",
+                  "px-4 sm:px-6 py-10 sm:py-14 text-center",
+                  over
+                    ? "bg-slate-50 border-[#F28C18]/60"
+                    : "border-slate-300 bg-[#FDFBF6]",
+                ].join(" ")}
+                aria-label="Zona para arrastrar o seleccionar archivo"
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") openDialog();
+                }}
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept={ACCEPT}
+                  className="hidden"
+                  onChange={onInputChange}
+                />
 
-              <div className="mx-auto mb-3 h-8 w-8 text-slate-400">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-full h-full">
-                  <path d="M20 16.5a4.5 4.5 0 0 0-3.6-4.41A6 6 0 1 0 4.5 13" />
-                  <path d="M12 12v7" />
-                  <path d="m8.5 15.5 3.5-3.5 3.5 3.5" />
-                </svg>
-              </div>
+                <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#F28C18]/10 text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <path d="M20 16.5a4.5 4.5 0 0 0-3.6-4.41A6 6 0 1 0 4.5 13" />
+                    <path d="M12 12v7" />
+                    <path d="m8.5 15.5 3.5-3.5 3.5 3.5" />
+                  </svg>
+                </div>
 
-              <div className="text-sm text-slate-600">
-                {file ? "Archivo listo para procesar" : "Arrastra tu archivo aquí"}
-              </div>
+                <p className="text-sm text-slate-600">
+                  Arrastra tu archivo aquí o haz clic para examinar
+                </p>
 
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={openDialog}
-                  className="inline-flex items-center rounded-md bg-sky-600 px-4 py-2 text-white text-sm font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-600 disabled:opacity-60"
-                  disabled={busy}
-                >
-                  {file ? "Cambiar" : "Examinar"}
-                </button>
-
-                {file && (
+                <div className="mt-5 flex items-center justify-center gap-3">
                   <button
                     type="button"
-                    onClick={removeFile}
-                    className="inline-flex items-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
+                    onClick={openDialog}
+                    className="inline-flex items-center rounded-full bg-[#F28C18] px-5 py-2 text-sm font-medium text-white shadow hover:bg-[#d9730d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F28C18] disabled:opacity-60"
                     disabled={busy}
                   >
-                    Quitar
+                    {file ? "Cambiar archivo" : "Examinar"}
                   </button>
+
+                  {file && (
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
+                      disabled={busy}
+                    >
+                      Quitar
+                    </button>
+                  )}
+                </div>
+
+                {/* Info del archivo seleccionado */}
+                {file && (
+                  <div className="mt-4 text-xs text-slate-500">
+                    {fileInfo}
+                  </div>
+                )}
+
+                <div className="mt-3 text-[11px] text-slate-500">
+                  (.csv, .ods, .xlsx, .xls) — Máx. {MAX_MB} MB
+                </div>
+              </div>
+
+              {/* Botón procesar + mensajes */}
+              <div className="mt-6 flex items-center justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={onProcess}
+                  className="inline-flex items-center rounded-full bg-[#333A46] px-5 py-2 text-sm font-medium text-white hover:bg-[#252a33] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#333A46] disabled:opacity-60"
+                  disabled={busy || !file}
+                  title={
+                    !file
+                      ? "Selecciona un archivo para continuar"
+                      : "Procesar"
+                  }
+                >
+                  Procesar
+                </button>
+
+                {busy && (
+                  <span className="text-xs text-slate-500">
+                    Subiendo y creando proceso…
+                  </span>
                 )}
               </div>
 
-              {/* Info del archivo seleccionado */}
-              {file && (
-                <div className="mt-4 text-sm text-slate-500">
-                  {fileInfo}
+              {error && (
+                <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
                 </div>
               )}
+
+           <p className="mt-6 text-[11px] text-slate-400 text-center">
+                En cumplimiento de privacidad: los archivos temporales se
+                eliminan tras el proceso.
+              </p>
             </div>
+          </section>
 
-            <div className="mt-3 text-center text-[12px] text-slate-500">
-              (.csv, .ods, .xlsx, .xls) — Máx. {MAX_MB} MB
+          {/* Columna derecha: GENERA */}
+          <aside className="w-full shrink-0 lg:w-[320px] lg:mt-14">
+            <h2 className="text-[11px] font-semibold tracking-[0.18em] text-slate-500">
+              GENERA
+            </h2>
+
+            <div className="mt-3 space-y-3">
+              {/* Perfilado de datos */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#E4DCCB] bg-white px-4 py-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <circle cx="11" cy="11" r="4.5" strokeWidth={1.8} />
+                    <path
+                      d="m15 15 3.5 3.5"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  Perfilado de datos
+                </p>
+              </div>
+
+              {/* Archivo limpio */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#E4DCCB] bg-white px-4 py-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <rect
+                      x="6"
+                      y="4"
+                      width="12"
+                      height="16"
+                      rx="2"
+                      strokeWidth={1.8}
+                    />
+                    <path d="M9 9h6M9 13h4" strokeWidth={1.6} />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  Archivo limpio (descargable)
+                </p>
+              </div>
+
+              {/* Dashboard */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#E4DCCB] bg-white px-4 py-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <path
+                      d="M6 17v-4M11 17V7M16 17v-6"
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                    />
+                    <rect
+                      x="4"
+                      y="4"
+                      width="16"
+                      height="16"
+                      rx="2"
+                      strokeWidth={1.5}
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900">Dashboard</p>
+              </div>
+
+              {/* Reporte analítico y descriptivo */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#E4DCCB] bg-white px-4 py-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <rect
+                      x="5"
+                      y="4"
+                      width="14"
+                      height="16"
+                      rx="2"
+                      strokeWidth={1.8}
+                    />
+                    <path d="M8 9h8M8 12h6M8 15h5" strokeWidth={1.5} />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  Reporte analítico y descriptivo
+                </p>
+              </div>
+
+              {/* Exporta en PDF */}
+              <div className="flex items-center gap-3 rounded-2xl border border-[#E4DCCB] bg-white px-4 py-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    stroke="currentColor"
+                    fill="none"
+                  >
+                    <rect
+                      x="6"
+                      y="3"
+                      width="12"
+                      height="18"
+                      rx="2"
+                      strokeWidth={1.8}
+                    />
+                    <path
+                      d="M9 16h2.2c1.2 0 1.8-.6 1.8-1.6 0-.9-.6-1.6-1.8-1.6H9v3.2Z"
+                      strokeWidth={1.4}
+                    />
+                    <path d="M9 9h6" strokeWidth={1.4} />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-900">
+                  Exporta en PDF (descargable)
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-8 flex items-center gap-4">
-            <button
-              type="button"
-              onClick={onProcess}
-              className="inline-flex items-center rounded-md border border-slate-300 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
-              disabled={busy || !file}
-              title={!file ? "Selecciona un archivo para continuar" : "Procesar"}
-            >
-              Procesar
-            </button>
-
-            {busy && (
-              <span className="text-sm text-slate-500">Subiendo y creando proceso…</span>
-            )}
-          </div>
-
-          {error && (
-            <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          <p className="mt-6 text-[11px] text-slate-400">
-            En cumplimiento de privacidad: los archivos temporales se eliminan tras el proceso.
-          </p>
+          </aside>
         </div>
       </main>
     </div>

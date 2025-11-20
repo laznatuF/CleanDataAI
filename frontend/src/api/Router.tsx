@@ -8,8 +8,10 @@ import Login from "./pages/Login";
 import LoginToken from "./pages/LoginToken";
 import DiagnosticsPage from "./pages/Diagnostics";
 import PlansPage from "./pages/Plans"; // ⬅️ NUEVO
+import CreateAccount from "./pages/CreateAccount";
 
 export const router = createBrowserRouter([
+  // Home
   { path: "/", element: <Home /> },
 
   // Proceso / resultados
@@ -23,6 +25,9 @@ export const router = createBrowserRouter([
   // Auth passwordless
   { path: "/login", element: <Login /> },
   { path: "/login/token", element: <LoginToken /> },
+
+  // Crear cuenta
+  { path: "/crear-cuenta", element: <CreateAccount /> },
 
   // Planes
   { path: "/planes", element: <PlansPage /> }, // ⬅️ ya no redirige
