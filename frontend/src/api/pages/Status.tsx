@@ -4,7 +4,13 @@ import { useParams, Link } from "react-router-dom";
 import Header from "../../components/Header";
 import { getStatus, artifactUrl /* , getHistory */ } from "../../libs/api";
 
-const PROCESS_FINISHED = new Set(["ok", "done", "finished", "completed", "success"]);
+const PROCESS_FINISHED = new Set([
+  "ok",
+  "done",
+  "finished",
+  "completed",
+  "success",
+]);
 
 type ApiStep = { name: string; status?: string | null };
 type StatusResponse = {
@@ -24,10 +30,6 @@ export default function StatusPage() {
 
   const [data, setData] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Bitácora (oculta por ahora)
-  // const [history, setHistory] = useState<any[]>([]);
-  // const [showHistory, setShowHistory] = useState(false);
 
   // ===== Poll de estado =====
   useEffect(() => {
@@ -64,12 +66,22 @@ export default function StatusPage() {
   const failed = statusStr === "failed";
   const queued = statusStr === "queued" || statusStr === "pending";
 
+  // ===== Artefactos =====
   const perfilRel = data?.artifacts?.["reporte_perfilado.html"];
   const dashRel = data?.artifacts?.["dashboard.html"];
   const csvRel = data?.artifacts?.["dataset_limpio.csv"];
+
+  // CSV y PDF específicos del perfilado de datos
+  const perfilCsvRel = data?.artifacts?.["reporte_perfilado.csv"];
+  const perfilPdfRel = data?.artifacts?.["reporte_perfilado.pdf"];
+
+  // Reporte integrado (solo planes de pago)
   const repRel = data?.artifacts?.["reporte_integrado.html"];
 
   const perfilHref = perfilRel ? artifactUrl(perfilRel) : null;
+  const perfilCsvHref = perfilCsvRel ? artifactUrl(perfilCsvRel) : null;
+  const perfilPdfHref = perfilPdfRel ? artifactUrl(perfilPdfRel) : null;
+
   const dashHref = dashRel ? artifactUrl(dashRel) : null;
   const csvHref = csvRel ? artifactUrl(csvRel) : null;
   const repHref = repRel ? artifactUrl(repRel) : null;
@@ -78,7 +90,7 @@ export default function StatusPage() {
     <div className="min-h-screen bg-white text-slate-800">
       <Header />
 
-      <main className="mx-auto w-full max-w-[1400px] px-6 md:px-8 py-8 md:py-10">
+      <main className="mx-auto w-full max-w-[1400px] px-6 md:px-8 py-8">
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 md:p-10">
           {/* Avisos (solo cuando aplica) */}
           <div className="space-y-2 mb-4">
@@ -107,17 +119,12 @@ export default function StatusPage() {
           {/* ======= Tarjetas de artefactos (prototipo) ======= */}
           <ArtifactsPanel
             perfilHref={perfilHref}
+            perfilCsvHref={perfilCsvHref}
+            perfilPdfHref={perfilPdfHref}
             csvHref={csvHref}
             dashHref={dashHref}
             repHref={repHref}
           />
-
-          {/* ======= Bitácora OCULTA ======= */}
-          {/*
-          <section className="mt-10">
-            ...
-          </section>
-          */}
         </div>
       </main>
     </div>
@@ -128,12 +135,21 @@ export default function StatusPage() {
 
 type ArtifactsPanelProps = {
   perfilHref: string | null;
+  perfilCsvHref: string | null;
+  perfilPdfHref: string | null;
   csvHref: string | null;
   dashHref: string | null;
   repHref: string | null;
 };
 
-function ArtifactsPanel({ perfilHref, csvHref, dashHref, repHref }: ArtifactsPanelProps) {
+function ArtifactsPanel({
+  perfilHref,
+  perfilCsvHref,
+  perfilPdfHref,
+  csvHref,
+  dashHref,
+  repHref,
+}: ArtifactsPanelProps) {
   const btnPrimary =
     "inline-flex items-center justify-center rounded-full bg-[#F28C18] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#d9730d] focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40 disabled:opacity-60";
   const btnSecondary =
@@ -204,23 +220,53 @@ function ArtifactsPanel({ perfilHref, csvHref, dashHref, repHref }: ArtifactsPan
                 <StatusBadge ready={perfilReady} />
               </div>
 
-              <h3 className="text-sm font-semibold text-slate-900">Perfilado</h3>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Perfilado de datos
+              </h3>
               <p className="mt-1 text-xs text-slate-500">
                 Vista rápida de calidad, tipos de datos y valores atípicos.
               </p>
             </div>
 
-            <div className="mt-4 flex justify-center">
-              <a
-                href={perfilHref ?? undefined}
-                target="_blank"
-                rel="noreferrer"
+            {/* botones Ver + Descargar */}
+            <div className="mt-4 flex flex-col gap-2">
+              {/* Ver → abre la vista de perfilado con CSV y PDF opcionales */}
+              <Link
+                to={
+                  perfilHref
+                    ? `/perfilado?url=${encodeURIComponent(perfilHref)}${
+                        perfilCsvHref
+                          ? `&csv=${encodeURIComponent(perfilCsvHref)}`
+                          : ""
+                      }${
+                        perfilPdfHref
+                          ? `&pdf=${encodeURIComponent(perfilPdfHref)}`
+                          : ""
+                      }`
+                    : "#"
+                }
                 className={
                   btnPrimary +
-                  (!perfilHref ? " pointer-events-none opacity-40 cursor-default" : "")
+                  (!perfilHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
                 }
               >
                 Ver
+              </Link>
+
+              {/* Descargar → descarga el HTML de perfilado tal cual */}
+              <a
+                href={perfilHref ?? undefined}
+                download
+                className={
+                  btnSecondary +
+                  (!perfilHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
+                }
+              >
+                Descargar
               </a>
             </div>
           </article>
@@ -259,23 +305,28 @@ function ArtifactsPanel({ perfilHref, csvHref, dashHref, repHref }: ArtifactsPan
             </div>
 
             <div className="mt-4 flex flex-col gap-2">
-              <a
-                href={csvHref ?? undefined}
-                target="_blank"
-                rel="noreferrer"
+              {/* Ver → abre la página de vista previa del CSV */}
+              <Link
+                to={csvHref ? `/csv-preview?url=${encodeURIComponent(csvHref)}` : "#"}
                 className={
                   btnPrimary +
-                  (!csvHref ? " pointer-events-none opacity-40 cursor-default" : "")
+                  (!csvHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
                 }
               >
                 Ver
-              </a>
+              </Link>
+
+              {/* Descargar → CSV limpio */}
               <a
                 href={csvHref ?? undefined}
                 download
                 className={
                   btnSecondary +
-                  (!csvHref ? " pointer-events-none opacity-40 cursor-default" : "")
+                  (!csvHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
                 }
               >
                 Descargar
@@ -325,7 +376,9 @@ function ArtifactsPanel({ perfilHref, csvHref, dashHref, repHref }: ArtifactsPan
                 rel="noreferrer"
                 className={
                   btnPrimary +
-                  (!dashHref ? " pointer-events-none opacity-40 cursor-default" : "")
+                  (!dashHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
                 }
               >
                 Ver
@@ -335,7 +388,9 @@ function ArtifactsPanel({ perfilHref, csvHref, dashHref, repHref }: ArtifactsPan
                 download
                 className={
                   btnSecondary +
-                  (!dashHref ? " pointer-events-none opacity-40 cursor-default" : "")
+                  (!dashHref
+                    ? " pointer-events-none opacity-40 cursor-default"
+                    : "")
                 }
               >
                 Descargar
