@@ -29,6 +29,11 @@ from app.application.outliers import apply_isolation_forest
 from app.application.rules import load_rules_for_process, describe_rules
 from app.application.pdf import build_pdf_from_template
 
+from app.services.profile_artifacts import (
+    build_profile_csv_from_html,
+    build_profile_pdf_from_html,
+)
+
 from app.core.config import (
     RUNS_DIR,
     BASE_DIR,
@@ -92,9 +97,9 @@ except Exception:
         def _num_from_any(s: pd.Series) -> pd.Series:
             return (
                 s.astype(str)
-                 .str.replace(r"[^\d\-,\.]", "", regex=True)
-                 .str.replace(".", "", regex=False)
-                 .str.replace(",", ".", regex=False)
+                .str.replace(r"[^\d\-,\.]", "", regex=True)
+                .str.replace(".", "", regex=False)
+                .str.replace(",", ".", regex=False)
             ).pipe(pd.to_numeric, errors="coerce")
 
         def _find_by_name(patterns: List[str]) -> List[str]:
@@ -114,7 +119,9 @@ except Exception:
         money_cols = list(
             dict.fromkeys(
                 money_cols
-                + _find_by_name([r"\b(monto|importe|total|valor|precio|amount|revenue|sales)\b"])
+                + _find_by_name(
+                    [r"\b(monto|importe|total|valor|precio|amount|revenue|sales)\b"]
+                )
             )
         )
 
@@ -124,11 +131,23 @@ except Exception:
 
         # Heurística precio * cantidad
         qty_col = next(
-            (c for c in _find_by_name([r"\b(cantidad|qty|quantity|unidades|units)\b"]) if c in df.columns),
+            (
+                c
+                for c in _find_by_name(
+                    [r"\b(cantidad|qty|quantity|unidades|units)\b"]
+                )
+                if c in df.columns
+            ),
             None,
         )
         price_col = next(
-            (c for c in _find_by_name([r"\b(precio|price|valor_unit|unit[_ ]?price)\b"]) if c in df.columns),
+            (
+                c
+                for c in _find_by_name(
+                    [r"\b(precio|price|valor_unit|unit[_ ]?price)\b"]
+                )
+                if c in df.columns
+            ),
             None,
         )
 
@@ -141,7 +160,8 @@ except Exception:
             try:
                 price = _num_from_any(df[price_col])
                 qty = pd.to_numeric(df[qty_col], errors="coerce")
-                df[derived_metric] = price * qty  # ok mutar df_clean: solo añade una columna
+                # ok mutar df_clean: solo añade una columna
+                df[derived_metric] = price * qty
                 primary_metric = derived_metric
             except Exception:
                 pass
@@ -160,12 +180,32 @@ except Exception:
                 dims.append(c)
 
         priority = [
-            "categoria", "category", "producto", "product",
-            "cliente", "customer", "usuario", "user",
-            "ciudad", "city", "region", "pais", "country",
-            "metodo_pago", "medio_pago", "payment", "pago",
-            "estado", "estatus", "status",
-            "prioridad", "gerente", "canal", "tipo", "vendedor", "seller"
+            "categoria",
+            "category",
+            "producto",
+            "product",
+            "cliente",
+            "customer",
+            "usuario",
+            "user",
+            "ciudad",
+            "city",
+            "region",
+            "pais",
+            "country",
+            "metodo_pago",
+            "medio_pago",
+            "payment",
+            "pago",
+            "estado",
+            "estatus",
+            "status",
+            "prioridad",
+            "gerente",
+            "canal",
+            "tipo",
+            "vendedor",
+            "seller",
         ]
 
         def _score_dim(c: str) -> tuple:
@@ -185,8 +225,16 @@ except Exception:
         # ---------- KPIs ----------
         kpis: List[Dict[str, Any]] = [{"title": "Filas", "op": "count_rows"}]
         if primary_metric:
-            kpis.append({"title": f"Suma de {primary_metric}", "op": "sum", "col": primary_metric})
-            kpis.append({"title": f"Promedio de {primary_metric}", "op": "mean", "col": primary_metric})
+            kpis.append(
+                {"title": f"Suma de {primary_metric}", "op": "sum", "col": primary_metric}
+            )
+            kpis.append(
+                {
+                    "title": f"Promedio de {primary_metric}",
+                    "op": "mean",
+                    "col": primary_metric,
+                }
+            )
 
         # ---------- Gráficos ----------
         charts: List[Dict[str, Any]] = []
@@ -194,103 +242,115 @@ except Exception:
         # 1) Serie temporal por mes (sum o conteo)
         if primary_date:
             ts_title = f"{(primary_metric or 'Registros').capitalize()} por mes"
-            charts.append({
-                "id": "ts_month",
-                "type": "line",
-                "title": ts_title,
-                "x_title": "Mes",
-                "y_title": primary_metric or "Conteo",
-                "encoding": {
-                    "x": {"field": primary_date, "timeUnit": "month"},
-                    "y": (
-                        {"field": primary_metric, "aggregate": "sum"}
-                        if primary_metric else
-                        {"field": primary_date, "aggregate": "count"}
-                    ),
-                },
-            })
+            charts.append(
+                {
+                    "id": "ts_month",
+                    "type": "line",
+                    "title": ts_title,
+                    "x_title": "Mes",
+                    "y_title": primary_metric or "Conteo",
+                    "encoding": {
+                        "x": {"field": primary_date, "timeUnit": "month"},
+                        "y": (
+                            {"field": primary_metric, "aggregate": "sum"}
+                            if primary_metric
+                            else {"field": primary_date, "aggregate": "count"}
+                        ),
+                    },
+                }
+            )
 
         # 2) Nulos por columna (siempre útil)
-        charts.append({
-            "id": "nulls_by_col",
-            "type": "bar",
-            "title": "Porcentaje de nulos por columna",
-            "x_title": "__column__",
-            "y_title": "% nulos",
-            "x_tickangle": -30,
-            "limit": min(20, len(cols)),
-            "encoding": {
-                "x": {"field": "__column__"},
-                "y": {"field": "__null_pct__", "aggregate": "mean"},
-            },
-        })
+        charts.append(
+            {
+                "id": "nulls_by_col",
+                "type": "bar",
+                "title": "Porcentaje de nulos por columna",
+                "x_title": "__column__",
+                "y_title": "% nulos",
+                "x_tickangle": -30,
+                "limit": min(20, len(cols)),
+                "encoding": {
+                    "x": {"field": "__column__"},
+                    "y": {"field": "__null_pct__", "aggregate": "mean"},
+                },
+            }
+        )
 
         # 3) Top-N por dimensión priorizada
         if dims:
             d0 = dims[0]
-            charts.append({
-                "id": "top_dim",
-                "type": "bar",
-                "title": f"Top {d0} por {(primary_metric or 'conteo')}",
-                "x_title": d0,
-                "y_title": primary_metric or "Conteo",
-                "limit": 12,
-                "encoding": {
-                    "x": {"field": d0},
-                    "y": (
-                        {"field": primary_metric, "aggregate": "sum"}
-                        if primary_metric else
-                        {"field": "__row__", "aggregate": "count"}
-                    ),
-                },
-            })
+            charts.append(
+                {
+                    "id": "top_dim",
+                    "type": "bar",
+                    "title": f"Top {d0} por {(primary_metric or 'conteo')}",
+                    "x_title": d0,
+                    "y_title": primary_metric or "Conteo",
+                    "limit": 12,
+                    "encoding": {
+                        "x": {"field": d0},
+                        "y": (
+                            {"field": primary_metric, "aggregate": "sum"}
+                            if primary_metric
+                            else {"field": "__row__", "aggregate": "count"}
+                        ),
+                    },
+                }
+            )
 
         # 4) Heatmap Mes × segunda dimensión (o pie/hist)
         if primary_date and len(dims) >= 2:
             d1 = dims[1]
-            charts.append({
-                "id": "heatmap_month_dim",
-                "type": "heatmap",
-                "title": f"Mes × {d1}",
-                "x_title": "Mes",
-                "y_title": d1,
-                "encoding": {
-                    "x": {"field": primary_date, "timeUnit": "month"},
-                    "y": {"field": d1},
-                    "value": (
-                        {"field": primary_metric, "aggregate": "sum"}
-                        if primary_metric else
-                        {"field": "__row__", "aggregate": "count"}
-                    ),
-                },
-            })
+            charts.append(
+                {
+                    "id": "heatmap_month_dim",
+                    "type": "heatmap",
+                    "title": f"Mes × {d1}",
+                    "x_title": "Mes",
+                    "y_title": d1,
+                    "encoding": {
+                        "x": {"field": primary_date, "timeUnit": "month"},
+                        "y": {"field": d1},
+                        "value": (
+                            {"field": primary_metric, "aggregate": "sum"}
+                            if primary_metric
+                            else {"field": "__row__", "aggregate": "count"}
+                        ),
+                    },
+                }
+            )
         elif dims:
             d0 = dims[0]
-            charts.append({
-                "id": "pie_dim",
-                "type": "pie",
-                "title": f"Participación por {d0}",
-                "limit": 9,
-                "encoding": {
-                    "category": {"field": d0},
-                    "value": (
-                        {"field": primary_metric, "aggregate": "sum"}
-                        if primary_metric else
-                        {"field": "__row__", "aggregate": "count"}
-                    ),
-                },
-            })
+            charts.append(
+                {
+                    "id": "pie_dim",
+                    "type": "pie",
+                    "title": f"Participación por {d0}",
+                    "limit": 9,
+                    "encoding": {
+                        "category": {"field": d0},
+                        "value": (
+                            {"field": primary_metric, "aggregate": "sum"}
+                            if primary_metric
+                            else {"field": "__row__", "aggregate": "count"}
+                        ),
+                    },
+                }
+            )
         else:
             hcol = primary_metric or (numeric_cols[0] if numeric_cols else None)
             if hcol:
-                charts.append({
-                    "id": "hist_metric",
-                    "type": "histogram",
-                    "title": f"Distribución de {hcol}",
-                    "x_title": hcol,
-                    "y_title": "Frecuencia",
-                    "encoding": {"x": {"field": hcol}},
-                })
+                charts.append(
+                    {
+                        "id": "hist_metric",
+                        "type": "histogram",
+                        "title": f"Distribución de {hcol}",
+                        "x_title": hcol,
+                        "y_title": "Frecuencia",
+                        "encoding": {"x": {"field": hcol}},
+                    }
+                )
 
         # ---------- Filtros ----------
         filters: List[Dict[str, Any]] = []
@@ -299,7 +359,9 @@ except Exception:
         for d in dims[:3]:
             filters.append({"field": d, "type": "categorical", "max_values": 50})
         if any(c for c in cols if c.lower() == "moneda"):
-            filters.append({"field": "moneda", "type": "categorical", "max_values": 50})
+            filters.append(
+                {"field": "moneda", "type": "categorical", "max_values": 50}
+            )
 
         # ---------- Esquema ----------
         schema = {
@@ -321,6 +383,7 @@ except Exception:
             "dashboards": [{"title": title, "charts": chart_ids}],
         }
 
+
 # Validación opcional del dashboard + spec seguro, si existen
 try:
     from app.application.spec_guard import validate_dashboard  # type: ignore
@@ -330,7 +393,10 @@ except Exception:
 try:
     from app.application.recommender import build_generic_spec  # type: ignore
 except Exception:
-    def build_generic_spec(df: pd.DataFrame, roles: Dict[str, str], title: str = "Dashboard") -> Dict[str, Any]:
+
+    def build_generic_spec(
+        df: pd.DataFrame, roles: Dict[str, str], title: str = "Dashboard"
+    ) -> Dict[str, Any]:
         """Fallback de layout seguro (conteos + nulos)."""
         first = df.columns[0]
         charts = [
@@ -345,17 +411,26 @@ except Exception:
                 "id": "safe_nulls",
                 "type": "bar",
                 "title": "Porcentaje de nulos por columna",
-                "encoding": {"x": {"field": "__column__"}, "y": {"field": "__null_pct__"}},
+                "encoding": {
+                    "x": {"field": "__column__"},
+                    "y": {"field": "__null_pct__"},
+                },
             },
         ]
         return {
             "title": title,
             "kpis": [{"title": "Filas", "op": "count_rows"}],
             "filters": [],
-            "schema": {"roles": roles, "primary_date": None, "primary_metric": None, "dims": []},
+            "schema": {
+                "roles": roles,
+                "primary_date": None,
+                "primary_metric": None,
+                "dims": [],
+            },
             "charts": charts,
             "dashboards": [{"title": title, "charts": [c["id"] for c in charts]}],
         }
+
 
 # ============================================================
 
@@ -408,7 +483,10 @@ def infer_column_type(series: pd.Series) -> str:
     if dt.notna().mean() > 0.8:
         return "fecha"
     # numérico
-    sn = s.str.replace(r"[.\s]", "", regex=True).str.replace(",", ".", regex=False)
+    sn = (
+        s.str.replace(r"[.\s]", "", regex=True)
+        .str.replace(",", ".", regex=False)
+    )
     num = pd.to_numeric(sn, errors="coerce")
     if num.notna().mean() > 0.8:
         return "numérico"
@@ -417,6 +495,8 @@ def infer_column_type(series: pd.Series) -> str:
 
 def infer_types(df: pd.DataFrame) -> Dict[str, str]:
     return {c: infer_column_type(df[c]) for c in df.columns}
+
+
 # --------------------------------------------------------
 
 
@@ -455,7 +535,9 @@ def create_initial_process(file) -> Dict[str, Any]:
     _write(proc_dir.name, status)
 
     # Bitácora: creación
-    append_history(proc_dir.name, {"type": "process_created", "file": uploaded_path.name})
+    append_history(
+        proc_dir.name, {"type": "process_created", "file": uploaded_path.name}
+    )
 
     return {"id": proc_dir.name, "uploaded_path": str(uploaded_path)}
 
@@ -467,6 +549,7 @@ def _stage(proc_id: str, stage: str):
         with _stage(proc_id, "Perfilado"):
             ... trabajo ...
     """
+
     class _Ctx:
         def __enter__(self_inner):
             self_inner.t0 = time.time()
@@ -476,20 +559,26 @@ def _stage(proc_id: str, stage: str):
         def __exit__(self_inner, exc_type, exc, tb):
             dur_ms = int((time.time() - self_inner.t0) * 1000)
             if exc:
-                append_history(proc_id, {
-                    "type": "stage_end",
-                    "stage": stage,
-                    "status": "failed",
-                    "duration_ms": dur_ms,
-                    "error": str(exc),
-                })
+                append_history(
+                    proc_id,
+                    {
+                        "type": "stage_end",
+                        "stage": stage,
+                        "status": "failed",
+                        "duration_ms": dur_ms,
+                        "error": str(exc),
+                    },
+                )
             else:
-                append_history(proc_id, {
-                    "type": "stage_end",
-                    "stage": stage,
-                    "status": "ok",
-                    "duration_ms": dur_ms,
-                })
+                append_history(
+                    proc_id,
+                    {
+                        "type": "stage_end",
+                        "stage": stage,
+                        "status": "ok",
+                        "duration_ms": dur_ms,
+                    },
+                )
             return False
 
     return _Ctx()
@@ -500,6 +589,8 @@ def process_pipeline(proc_id: str) -> None:
     Procesa en background: queued → running → completed/failed.
     Genera:
       - reporte_perfilado.html
+      - reporte_perfilado.csv
+      - reporte_perfilado.pdf
       - dataset_limpio.csv (con columnas is_outlier, outlier_score, outlier_method si aplica)
       - auto_dashboard_spec.json (spec para render)
       - dashboard.html (render usando auto_spec)
@@ -531,20 +622,31 @@ def process_pipeline(proc_id: str) -> None:
         with _stage(proc_id, "Ingesta"):
             uploaded = RUNS_DIR / proc_id / "input" / status["filename"]
             df = read_dataframe(uploaded)
-            status["metrics"].update({"rows": int(df.shape[0]), "cols": int(df.shape[1])})
+            status["metrics"].update(
+                {"rows": int(df.shape[0]), "cols": int(df.shape[1])}
+            )
             status["progress"] = 30
             _write(proc_id, status)
-            append_history(proc_id, {
-                "type": "ingest_info",
-                "rows": int(df.shape[0]),
-                "cols": int(df.shape[1]),
-                "source": str(uploaded.name),
-            })
+            append_history(
+                proc_id,
+                {
+                    "type": "ingest_info",
+                    "rows": int(df.shape[0]),
+                    "cols": int(df.shape[1]),
+                    "source": str(uploaded.name),
+                },
+            )
 
         # 2) Normalización de fechas
         with _stage(proc_id, "Fechas"):
             inferred_dates = normalize_dates_in_df(df, min_success_ratio=0.5)
-            append_history(proc_id, {"type": "dates_normalized", "columns": sorted(list(inferred_dates.keys()))})
+            append_history(
+                proc_id,
+                {
+                    "type": "dates_normalized",
+                    "columns": sorted(list(inferred_dates.keys())),
+                },
+            )
 
         # 3) Inferencia de tipos
         with _stage(proc_id, "InferenciaTipos"):
@@ -556,14 +658,47 @@ def process_pipeline(proc_id: str) -> None:
             _write(proc_id, status)
             append_history(proc_id, {"type": "types_inferred", "roles": roles})
 
-        # 4) Perfilado → HTML
+        # 4) Perfilado → HTML + CSV + PDF
         artifacts = RUNS_DIR / proc_id / "artifacts"
         with _stage(proc_id, "Perfilado"):
+            # HTML (igual que antes)
             try:
-                profile_path = generate_profile_html(df, artifacts, TEMPLATES_DIR, roles=roles)
+                profile_path = generate_profile_html(
+                    df, artifacts, TEMPLATES_DIR, roles=roles
+                )
             except TypeError:
                 profile_path = generate_profile_html(df, artifacts, TEMPLATES_DIR)
-            status["artifacts"]["reporte_perfilado.html"] = _rel_to_base(profile_path)
+
+            # Registrar HTML
+            status["artifacts"]["reporte_perfilado.html"] = _rel_to_base(
+                profile_path
+            )
+
+            # ===== CSV y PDF del MISMO perfilado =====
+            try:
+                perfil_csv_path = artifacts / "reporte_perfilado.csv"
+                perfil_pdf_path = artifacts / "reporte_perfilado.pdf"
+
+                build_profile_csv_from_html(profile_path, perfil_csv_path)
+                build_profile_pdf_from_html(profile_path, perfil_pdf_path)
+
+                status["artifacts"]["reporte_perfilado.csv"] = _rel_to_base(
+                    perfil_csv_path
+                )
+                status["artifacts"]["reporte_perfilado.pdf"] = _rel_to_base(
+                    perfil_pdf_path
+                )
+            except Exception as e:
+                # Si algo falla, dejamos registro pero no rompemos el proceso
+                append_history(
+                    proc_id,
+                    {
+                        "type": "perfilado_export_error",
+                        "error": str(e),
+                    },
+                )
+
+            # marcar etapa OK como antes
             for s in status["steps"]:
                 if s["name"] == "Perfilado":
                     s["status"] = "ok"
@@ -588,29 +723,42 @@ def process_pipeline(proc_id: str) -> None:
                     contamination=OUTLIER_CONTAMINATION,
                     random_state=OUTLIER_RANDOM_STATE,
                 )
-                append_history(proc_id, {
-                    "type": "outliers_isolation_forest",
-                    "columns_used": out_summary.get("used_columns", []),
-                    "contamination": out_summary.get("contamination", OUTLIER_CONTAMINATION),
-                    "random_state": out_summary.get("random_state", OUTLIER_RANDOM_STATE),
-                    "outliers": out_summary.get("outliers", 0),
-                    "total": out_summary.get("total", 0),
-                    "ratio": out_summary.get("ratio", 0.0),
-                    "skipped": out_summary.get("skipped", False),
-                })
+                append_history(
+                    proc_id,
+                    {
+                        "type": "outliers_isolation_forest",
+                        "columns_used": out_summary.get("used_columns", []),
+                        "contamination": out_summary.get(
+                            "contamination", OUTLIER_CONTAMINATION
+                        ),
+                        "random_state": out_summary.get(
+                            "random_state", OUTLIER_RANDOM_STATE
+                        ),
+                        "outliers": out_summary.get("outliers", 0),
+                        "total": out_summary.get("total", 0),
+                        "ratio": out_summary.get("ratio", 0.0),
+                        "skipped": out_summary.get("skipped", False),
+                    },
+                )
 
             cleaned_csv = artifacts / "dataset_limpio.csv"
             df_clean.to_csv(cleaned_csv, index=False, encoding="utf-8")
 
-            status["metrics"].update({
-                "rows_clean": int(df_clean.shape[0]),
-                "cols_clean": int(df_clean.shape[1]),
-                "clean_summary": clean_summary,
-                "outliers_count": int(out_summary.get("outliers", 0)),
-                "outliers_ratio": float(out_summary.get("ratio", 0.0)),
-                "outliers_used_columns": out_summary.get("used_columns", []),
-                "outliers_contamination": float(out_summary.get("contamination", OUTLIER_CONTAMINATION)),
-            })
+            status["metrics"].update(
+                {
+                    "rows_clean": int(df_clean.shape[0]),
+                    "cols_clean": int(df_clean.shape[1]),
+                    "clean_summary": clean_summary,
+                    "outliers_count": int(out_summary.get("outliers", 0)),
+                    "outliers_ratio": float(out_summary.get("ratio", 0.0)),
+                    "outliers_used_columns": out_summary.get("used_columns", []),
+                    "outliers_contamination": float(
+                        out_summary.get(
+                            "contamination", OUTLIER_CONTAMINATION
+                        )
+                    ),
+                }
+            )
             status["artifacts"]["dataset_limpio.csv"] = _rel_to_base(cleaned_csv)
 
             for s in status["steps"]:
@@ -638,13 +786,20 @@ def process_pipeline(proc_id: str) -> None:
             # Validación opcional (si existe spec_guard)
             if validate_dashboard is not None:
                 try:
-                    health = validate_dashboard(df_clean, spec, roles=status["metrics"]["inferred_types"])
-                    append_history(proc_id, {
-                        "type": "dashboard_health",
-                        "score": float(getattr(health, "score", 0.0)),
-                        "blocking": bool(getattr(health, "blocking", False)),
-                    })
-                    if STRICT_DASH_CHECK and bool(getattr(health, "blocking", False)):
+                    health = validate_dashboard(
+                        df_clean, spec, roles=status["metrics"]["inferred_types"]
+                    )
+                    append_history(
+                        proc_id,
+                        {
+                            "type": "dashboard_health",
+                            "score": float(getattr(health, "score", 0.0)),
+                            "blocking": bool(getattr(health, "blocking", False)),
+                        },
+                    )
+                    if STRICT_DASH_CHECK and bool(
+                        getattr(health, "blocking", False)
+                    ):
                         # Sólo si has activado modo estricto
                         spec = build_generic_spec(
                             df_clean,
@@ -656,9 +811,19 @@ def process_pipeline(proc_id: str) -> None:
                     pass
 
             auto_spec_path = artifacts / "auto_dashboard_spec.json"
-            auto_spec_path.write_text(json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8")
-            status["artifacts"]["auto_dashboard_spec.json"] = _rel_to_base(auto_spec_path)
-            append_history(proc_id, {"type": "auto_dashboard_spec_built", "path": _rel_to_base(auto_spec_path)})
+            auto_spec_path.write_text(
+                json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            status["artifacts"]["auto_dashboard_spec.json"] = _rel_to_base(
+                auto_spec_path
+            )
+            append_history(
+                proc_id,
+                {
+                    "type": "auto_dashboard_spec_built",
+                    "path": _rel_to_base(auto_spec_path),
+                },
+            )
 
             # 6.b) Render del dashboard HTML usando el SPEC
             dash_path = generate_dashboard_html(
@@ -683,20 +848,35 @@ def process_pipeline(proc_id: str) -> None:
             quality = {
                 "rows": int(df_clean.shape[0]),
                 "cols": int(df_clean.shape[1]),
-                "missing_overall_pct": float(df_clean.isna().mean().mean() * 100.0),
+                "missing_overall_pct": float(
+                    df_clean.isna().mean().mean() * 100.0
+                ),
                 "missing_by_col_pct": (
-                    df_clean.isna().mean().mul(100).round(2).sort_values(ascending=False).to_dict()
+                    df_clean.isna()
+                    .mean()
+                    .mul(100)
+                    .round(2)
+                    .sort_values(ascending=False)
+                    .to_dict()
                 ),
             }
             links = {
-                "dataset_limpio.csv": _rel_to_base(cleaned_csv) if cleaned_csv else "",
+                "dataset_limpio.csv": _rel_to_base(cleaned_csv)
+                if cleaned_csv
+                else "",
                 "dashboard.html": _rel_to_base(dash_path) if dash_path else "",
-                "auto_dashboard_spec.json": _rel_to_base(auto_spec_path) if auto_spec_path else "",
-                "reporte_perfilado.html": _rel_to_base(profile_path) if profile_path else "",
+                "auto_dashboard_spec.json": _rel_to_base(auto_spec_path)
+                if auto_spec_path
+                else "",
+                "reporte_perfilado.html": _rel_to_base(profile_path)
+                if profile_path
+                else "",
             }
             report_path = artifacts / "reporte_integrado.html"
             build_full_report(clean_summary, quality, links, report_path)
-            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(report_path)
+            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(
+                report_path
+            )
             for s in status["steps"]:
                 if s["name"] == "Reporte":
                     s["status"] = "ok"
@@ -712,25 +892,50 @@ def process_pipeline(proc_id: str) -> None:
                         "clean_summary": clean_summary,
                         "quality": quality,
                         "links": {
-                            "reporte_perfilado": links.get("reporte_perfilado.html") or "",
+                            "reporte_perfilado": links.get(
+                                "reporte_perfilado.html"
+                            )
+                            or "",
                             "dashboard": links.get("dashboard.html") or "",
                             "clean_csv": links.get("dataset_limpio.csv") or "",
-                            "auto_spec": links.get("auto_dashboard_spec.json") or "",
+                            "auto_spec": links.get(
+                                "auto_dashboard_spec.json"
+                            )
+                            or "",
                         },
                         "outliers": {
-                            "used_columns": status["metrics"].get("outliers_used_columns", []),
-                            "contamination": status["metrics"].get("outliers_contamination", 0.0),
-                            "outliers": status["metrics"].get("outliers_count", 0),
+                            "used_columns": status["metrics"].get(
+                                "outliers_used_columns", []
+                            ),
+                            "contamination": status["metrics"].get(
+                                "outliers_contamination", 0.0
+                            ),
+                            "outliers": status["metrics"].get(
+                                "outliers_count", 0
+                            ),
                             "total": int(quality["rows"]),
-                            "ratio": status["metrics"].get("outliers_ratio", 0.0),
+                            "ratio": status["metrics"].get(
+                                "outliers_ratio", 0.0
+                            ),
                         },
                     }
                     build_pdf_from_template("report.j2.html", pdf_path, ctx)
-                    status["artifacts"]["reporte_integrado.pdf"] = _rel_to_base(pdf_path)
+                    status["artifacts"]["reporte_integrado.pdf"] = _rel_to_base(
+                        pdf_path
+                    )
                     _write(proc_id, status)
-                    append_history(proc_id, {"type": "pdf_generated", "path": _rel_to_base(pdf_path)})
+                    append_history(
+                        proc_id,
+                        {
+                            "type": "pdf_generated",
+                            "path": _rel_to_base(pdf_path),
+                        },
+                    )
                 except Exception as e:
-                    append_history(proc_id, {"type": "pdf_failed", "error": str(e)})
+                    append_history(
+                        proc_id,
+                        {"type": "pdf_failed", "error": str(e)},
+                    )
 
         # 8) Final
         status["status"] = "completed"
@@ -750,7 +955,13 @@ def process_pipeline(proc_id: str) -> None:
                 "id": proc_id,
                 "status": "failed",
                 "progress": 0,
-                "steps": [{"name": s, "status": "failed" if i > 0 else "ok"} for i, s in enumerate(STAGES)],
+                "steps": [
+                    {
+                        "name": s,
+                        "status": "failed" if i > 0 else "ok",
+                    }
+                    for i, s in enumerate(STAGES)
+                ],
             }
 
         # Marca paso actual y generales en failed

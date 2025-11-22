@@ -7,8 +7,12 @@ import Settings from "./pages/Settings";
 import Login from "./pages/Login";
 import LoginToken from "./pages/LoginToken";
 import DiagnosticsPage from "./pages/Diagnostics";
-import PlansPage from "./pages/Plans"; // ⬅️ NUEVO
+import PlansPage from "./pages/Plans"; 
 import CreateAccount from "./pages/CreateAccount";
+import CsvPreview from "./pages/CsvPreview";
+import ProfilePreview from "./pages/ProfilePreview";
+
+
 
 export const router = createBrowserRouter([
   // Home
@@ -17,6 +21,10 @@ export const router = createBrowserRouter([
   // Proceso / resultados
   { path: "/status/:runId", element: <Status /> },
   { path: "/results/:runId", element: <Results /> },
+
+   // ruta para ver atefactos
+  { path: "/csv-preview", element: <CsvPreview /> },
+  { path: "/perfilado", element: <ProfilePreview /> },
 
   // Ajustes / diagnóstico
   { path: "/settings", element: <Settings /> },

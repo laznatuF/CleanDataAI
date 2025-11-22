@@ -1,0 +1,241 @@
+fecha,id_transaccion,cliente,categoria,producto,monto,moneda,cantidad,metodo_pago,origen,ciudad,bool_col,outlier_score,is_outlier
+2025-01-03,TX-20250103-00001,Cliente_0217,Suscripción,Plan Pro,1224.56,USD,16,PayPal,Partner,Buenos Aires,True,0.795,False
+2025-01-27,TX-20250127-00002,Cliente_0348,Suscripción,Plan Basic,54.61,USD,2,PayPal,Ads,Bogotá,True,-0.93,False
+2025-01-17,TX-20250117-00003,Cliente_0359,Suscripción,Plan Pro,1586.06,USD,20,Tarjeta,Web,Buenos Aires,True,1.328,False
+2025-01-25,TX-20250125-00004,Cliente_0064,Suscripción,Plan Pro,846.76,USD,11,PayPal,Web,Madrid,False,0.238,False
+2025-01-16,TX-20250116-00005,Cliente_0391,Suscripción,Plan Basic,213.67,USD,8,Transferencia,Web,Buenos Aires,False,-0.695,False
+2025-01-20,TX-20250120-00006,Cliente_0411,Suscripción,Plan Basic,264.66,USD,9,Tarjeta,Partner,Santiago,True,-0.62,False
+2025-01-14,TX-20250114-00007,Cliente_0444,Suscripción,Plan Basic,146.60,USD,5,Transferencia,Ads,Lima,True,-0.794,False
+2025-01-02,TX-20250102-00008,Cliente_0413,Suscripción,Plan Pro,1277.88,USD,18,Tarjeta,Partner,Santiago,False,0.874,False
+2025-01-06,TX-20250106-00009,Cliente_0034,Suscripción,Plan Pro,1114.36,USD,16,Transferencia,Ads,Buenos Aires,True,0.633,False
+2025-01-31,TX-20250131-00010,Cliente_0446,Suscripción,Plan Basic,257.65,USD,9,Transferencia,Web,Buenos Aires,True,-0.63,False
+2025-01-24,TX-20250124-00011,Cliente_0249,Suscripción,Plan Basic,111.96,USD,4,PayPal,Partner,Buenos Aires,False,-0.845,False
+2025-01-02,TX-20250102-00012,Cliente_0077,Suscripción,Plan Basic,274.65,USD,11,Transferencia,Ads,Madrid,True,-0.605,False
+2025-01-29,TX-20250129-00013,Cliente_0206,Suscripción,Plan Pro,1170.55,USD,15,PayPal,Ads,Buenos Aires,True,0.715,False
+2025-01-11,TX-20250111-00014,Cliente_0185,Suscripción,Plan Basic,561.18,USD,19,PayPal,Ads,Bogotá,True,-0.183,False
+2025-01-25,TX-20250125-00015,Cliente_0343,Suscripción,Plan Pro,314.92,USD,4,Tarjeta,Web,Lima,False,-0.546,False
+2025-01-15,TX-20250115-00016,Cliente_0114,Suscripción,Plan Basic,206.96,USD,7,PayPal,Ads,Lima,True,-0.705,False
+2025-01-30,TX-20250130-00017,Cliente_0384,Suscripción,Plan Pro,686.46,USD,9,PayPal,Partner,Buenos Aires,False,0.002,False
+2025-01-26,TX-20250126-00018,Cliente_0402,Suscripción,Plan Basic,222.63,USD,9,PayPal,Ads,Lima,False,-0.682,False
+2025-01-28,TX-20250128-00019,Cliente_0318,Suscripción,Plan Enterprise,1163.95,USD,6,Transferencia,Web,Buenos Aires,False,0.706,False
+2025-01-05,TX-20250105-00020,Cliente_0100,Suscripción,Plan Basic,494.00,USD,17,Tarjeta,Web,Madrid,True,-0.282,False
+2025-01-25,TX-20250125-00021,Cliente_0236,Suscripción,Plan Pro,1223.54,USD,16,PayPal,Web,CDMX,False,0.794,False
+2025-01-22,TX-20250122-00022,Cliente_0390,Suscripción,Plan Pro,443.95,USD,6,PayPal,Partner,Bogotá,True,-0.356,False
+2025-01-16,TX-20250116-00023,Cliente_0123,Suscripción,Plan Pro,940.17,USD,12,PayPal,Ads,Lima,False,0.376,False
+2025-01-04,TX-20250104-00024,Cliente_0334,Suscripción,Plan Basic,255.15,USD,9,Tarjeta,Partner,Santiago,False,-0.634,False
+2025-01-27,TX-20250127-00025,Cliente_0287,Suscripción,Plan Enterprise,2364.01,USD,12,PayPal,Web,Madrid,False,2.475,True
+2025-01-20,TX-20250120-00026,Cliente_0277,Suscripción,Plan Pro,871.40,USD,12,PayPal,Web,Buenos Aires,False,0.274,False
+2025-01-25,TX-20250125-00027,Cliente_0174,Suscripción,Plan Pro,492.49,USD,7,PayPal,Web,Bogotá,False,-0.284,False
+2025-01-14,TX-20250114-00028,Cliente_0108,Suscripción,Plan Basic,576.67,USD,20,Transferencia,Partner,Buenos Aires,True,-0.16,False
+2025-01-31,TX-20250131-00029,Cliente_0411,Suscripción,Plan Basic,453.83,USD,18,Tarjeta,Web,Madrid,False,-0.341,False
+2025-01-02,TX-20250102-00030,Cliente_0141,Suscripción,Plan Pro,1285.27,USD,18,Tarjeta,Web,Madrid,False,0.885,False
+2025-01-14,TX-20250114-00031,Cliente_0253,Suscripción,Plan Enterprise,2750.29,USD,14,Transferencia,Ads,Bogotá,False,3.044,True
+2025-01-25,TX-20250125-00032,Cliente_0332,Suscripción,Plan Enterprise,3548.76,USD,20,PayPal,Ads,Buenos Aires,False,4.221,True
+2025-01-13,TX-20250113-00033,Cliente_0167,Suscripción,Plan Basic,410.73,USD,17,PayPal,Partner,CDMX,False,-0.405,False
+2025-01-01,TX-20250101-00034,Cliente_0045,Suscripción,Plan Basic,83.88,USD,3,Tarjeta,Partner,Santiago,True,-0.886,False
+2025-01-22,TX-20250122-00035,Cliente_0450,Suscripción,Plan Pro,778.88,USD,10,Tarjeta,Ads,Madrid,True,0.138,False
+2025-01-16,TX-20250116-00036,Cliente_0077,Suscripción,Plan Basic,558.38,USD,19,Transferencia,Web,Bogotá,True,-0.187,False
+2025-01-16,TX-20250116-00037,Cliente_0120,Suscripción,Plan Basic,247.22,USD,9,Tarjeta,Ads,Buenos Aires,False,-0.646,False
+2025-01-10,TX-20250110-00038,Cliente_0315,Suscripción,Plan Basic,366.18,USD,14,Transferencia,Web,Santiago,True,-0.47,False
+2025-01-30,TX-20250130-00039,Cliente_0170,Suscripción,Plan Pro,151.73,USD,2,Transferencia,Partner,CDMX,True,-0.786,False
+2025-01-30,TX-20250130-00040,Cliente_0454,Suscripción,Plan Pro,522.61,USD,8,Tarjeta,Web,CDMX,False,-0.24,False
+2025-02-13,TX-20250213-00041,Cliente_0132,Suscripción,Plan Pro,492.48,USD,6,Tarjeta,Web,Buenos Aires,False,-0.284,False
+2025-02-22,TX-20250222-00042,Cliente_0358,Suscripción,Plan Basic,169.13,USD,6,Transferencia,Partner,Buenos Aires,True,-0.761,False
+2025-02-21,TX-20250221-00043,Cliente_0224,Suscripción,Plan Basic,152.14,USD,6,Tarjeta,Web,Madrid,True,-0.786,False
+2025-02-26,TX-20250226-00044,Cliente_0228,Suscripción,Plan Enterprise,566.06,USD,3,Tarjeta,Partner,CDMX,False,-0.176,False
+2025-02-21,TX-20250221-00045,Cliente_0273,Suscripción,Plan Basic,194.23,USD,7,Tarjeta,Web,CDMX,True,-0.724,False
+2025-02-05,TX-20250205-00046,Cliente_0428,Suscripción,Plan Enterprise,1994.31,USD,10,Transferencia,Partner,CDMX,False,1.93,False
+2025-02-14,TX-20250214-00047,Cliente_0155,Suscripción,Plan Basic,438.04,USD,15,Tarjeta,Web,Bogotá,True,-0.364,False
+2025-02-18,TX-20250218-00048,Cliente_0292,Suscripción,Plan Pro,235.30,USD,3,Tarjeta,Ads,CDMX,True,-0.663,False
+2025-02-18,TX-20250218-00049,Cliente_0393,Suscripción,Plan Basic,52.48,USD,2,Tarjeta,Web,Santiago,True,-0.933,False
+2025-02-02,TX-20250202-00050,Cliente_0247,Suscripción,Plan Pro,323.92,USD,4,Transferencia,Web,Bogotá,True,-0.533,False
+2025-02-19,TX-20250219-00051,Cliente_0088,Suscripción,Plan Pro,247.40,USD,3,PayPal,Web,CDMX,False,-0.645,False
+2025-02-17,TX-20250217-00052,Cliente_0086,Suscripción,Plan Enterprise,3095.49,USD,16,PayPal,Ads,Lima,True,3.553,True
+2025-02-28,TX-20250228-00053,Cliente_0306,Suscripción,Plan Basic,333.63,USD,12,PayPal,Ads,Lima,False,-0.518,False
+2025-02-17,TX-20250217-00054,Cliente_0012,Suscripción,Plan Basic,166.32,USD,6,Tarjeta,Partner,Bogotá,True,-0.765,False
+2025-02-12,TX-20250212-00055,Cliente_0033,Suscripción,Plan Basic,292.73,USD,10,PayPal,Partner,Buenos Aires,False,-0.579,False
+2025-02-03,TX-20250203-00056,Cliente_0243,Suscripción,Plan Enterprise,1298.37,USD,6,Transferencia,Partner,Buenos Aires,False,0.904,False
+2025-02-13,TX-20250213-00057,Cliente_0271,Suscripción,Plan Pro,1237.97,USD,19,Transferencia,Ads,Madrid,True,0.815,False
+2025-02-14,TX-20250214-00058,Cliente_0134,Suscripción,Plan Pro,1179.22,USD,17,Transferencia,Ads,Santiago,True,0.728,False
+2025-02-16,TX-20250216-00059,Cliente_0142,Suscripción,Plan Basic,313.14,USD,11,PayPal,Ads,Buenos Aires,False,-0.548,False
+2025-02-01,TX-20250201-00060,Cliente_0413,Suscripción,Plan Basic,233.09,USD,8,PayPal,Partner,Buenos Aires,False,-0.666,False
+2025-02-16,TX-20250216-00061,Cliente_0158,Suscripción,Plan Pro,229.64,USD,3,Tarjeta,Web,Madrid,False,-0.672,False
+2025-02-04,TX-20250204-00062,Cliente_0336,Suscripción,Plan Pro,1104.22,USD,14,Tarjeta,Partner,Buenos Aires,False,0.618,False
+2025-02-21,TX-20250221-00063,Cliente_0161,Suscripción,Plan Basic,414.87,USD,15,PayPal,Ads,CDMX,True,-0.399,False
+2025-02-04,TX-20250204-00064,Cliente_0458,Suscripción,Plan Basic,309.06,USD,13,Tarjeta,Ads,Santiago,False,-0.554,False
+2025-02-07,TX-20250207-00065,Cliente_0273,Suscripción,Plan Pro,77.28,USD,1,Transferencia,Web,Santiago,False,-0.896,False
+2025-02-11,TX-20250211-00066,Cliente_0415,Suscripción,Plan Basic,208.11,USD,7,Transferencia,Web,Madrid,True,-0.703,False
+2025-02-27,TX-20250227-00067,Cliente_0317,Suscripción,Plan Pro,568.45,USD,7,PayPal,Partner,Bogotá,True,-0.172,False
+2025-02-09,TX-20250209-00068,Cliente_0258,Suscripción,Plan Enterprise,2583.84,USD,13,Tarjeta,Web,CDMX,True,2.799,True
+2025-02-28,TX-20250228-00069,Cliente_0267,Suscripción,Plan Basic,558.37,USD,19,Transferencia,Ads,Madrid,True,-0.187,False
+2025-02-02,TX-20250202-00070,Cliente_0218,Suscripción,Plan Basic,142.23,USD,6,Tarjeta,Partner,Santiago,False,-0.8,False
+2025-02-05,TX-20250205-00071,Cliente_0422,Suscripción,Plan Basic,519.39,USD,18,Transferencia,Partner,Buenos Aires,True,-0.244,False
+2025-02-25,TX-20250225-00072,Cliente_0446,Suscripción,Plan Basic,146.24,USD,5,Transferencia,Partner,Lima,True,-0.795,False
+2025-02-14,TX-20250214-00073,Cliente_0168,Suscripción,Plan Enterprise,1402.17,USD,7,Transferencia,Ads,Bogotá,False,1.057,False
+2025-02-19,TX-20250219-00074,Cliente_0187,Suscripción,Plan Pro,648.13,USD,9,Transferencia,Web,Santiago,False,-0.055,False
+2025-02-21,TX-20250221-00075,Cliente_0003,Suscripción,Plan Basic,437.39,USD,15,Tarjeta,Web,Bogotá,False,-0.365,False
+2025-02-27,TX-20250227-00076,Cliente_0121,Suscripción,Plan Basic,578.29,USD,19,Transferencia,Ads,Bogotá,True,-0.158,False
+2025-02-02,TX-20250202-00077,Cliente_0373,Suscripción,Plan Basic,441.31,USD,17,Tarjeta,Partner,Santiago,False,-0.36,False
+2025-02-06,TX-20250206-00078,Cliente_0300,Suscripción,Plan Basic,201.87,USD,8,PayPal,Ads,Madrid,True,-0.713,False
+2025-02-08,TX-20250208-00079,Cliente_0160,Suscripción,Plan Basic,206.92,USD,7,PayPal,Partner,Bogotá,False,-0.705,False
+2025-02-28,TX-20250228-00080,Cliente_0250,Suscripción,Plan Pro,786.13,USD,10,PayPal,Partner,Bogotá,False,0.149,False
+2025-03-29,TX-20250329-00081,Cliente_0140,Suscripción,Plan Pro,82.34,USD,1,Transferencia,Ads,Lima,True,-0.889,False
+2025-03-05,TX-20250305-00082,Cliente_0339,Suscripción,Plan Basic,23.13,USD,1,Transferencia,Ads,Madrid,True,-0.976,False
+2025-03-10,TX-20250310-00083,Cliente_0383,Suscripción,Plan Pro,847.02,USD,11,Transferencia,Ads,Santiago,False,0.238,False
+2025-03-19,TX-20250319-00084,Cliente_0100,Suscripción,Plan Basic,245.46,USD,9,PayPal,Ads,Madrid,False,-0.648,False
+2025-03-01,TX-20250301-00085,Cliente_0413,Suscripción,Plan Basic,396.81,USD,15,PayPal,Web,Bogotá,False,-0.425,False
+2025-03-05,TX-20250305-00086,Cliente_0062,Suscripción,Plan Pro,613.21,USD,9,Tarjeta,Ads,Santiago,False,-0.106,False
+2025-03-03,TX-20250303-00087,Cliente_0066,Suscripción,Plan Pro,531.92,USD,8,PayPal,Partner,Santiago,True,-0.226,False
+2025-03-16,TX-20250316-00088,Cliente_0331,Suscripción,Plan Pro,903.87,USD,11,Tarjeta,Web,Santiago,True,0.322,False
+2025-03-17,TX-20250317-00089,Cliente_0250,Suscripción,Plan Basic,161.85,USD,6,PayPal,Web,CDMX,False,-0.771,False
+2025-03-01,TX-20250301-00090,Cliente_0278,Suscripción,Plan Enterprise,2160.58,USD,12,Tarjeta,Ads,Madrid,False,2.175,True
+2025-03-27,TX-20250327-00091,Cliente_0374,Suscripción,Plan Basic,87.24,USD,3,Tarjeta,Ads,Madrid,True,-0.881,False
+2025-03-13,TX-20250313-00092,Cliente_0483,Suscripción,Plan Enterprise,210.20,USD,1,Transferencia,Web,Buenos Aires,False,-0.7,False
+2025-03-06,TX-20250306-00093,Cliente_0216,Suscripción,Plan Basic,546.25,USD,19,Tarjeta,Partner,Buenos Aires,False,-0.205,False
+2025-03-15,TX-20250315-00094,Cliente_0392,Suscripción,Plan Pro,933.05,USD,13,PayPal,Partner,CDMX,False,0.365,False
+2025-03-21,TX-20250321-00095,Cliente_0126,Suscripción,Plan Pro,208.63,USD,3,Transferencia,Web,Madrid,False,-0.703,False
+2025-03-25,TX-20250325-00096,Cliente_0117,Suscripción,Plan Basic,288.58,USD,10,PayPal,Partner,Bogotá,False,-0.585,False
+2025-03-24,TX-20250324-00097,Cliente_0060,Suscripción,Plan Pro,1010.69,USD,13,Transferencia,Web,Madrid,False,0.48,False
+2025-03-12,TX-20250312-00098,Cliente_0213,Suscripción,Plan Basic,549.44,USD,19,Transferencia,Ads,Santiago,True,-0.2,False
+2025-03-30,TX-20250330-00099,Cliente_0265,Suscripción,Plan Basic,474.07,USD,18,PayPal,Web,Madrid,True,-0.311,False
+2025-03-08,TX-20250308-00100,Cliente_0119,Suscripción,Plan Basic,159.86,USD,6,Transferencia,Ads,CDMX,False,-0.774,False
+2025-03-27,TX-20250327-00101,Cliente_0440,Suscripción,Plan Basic,509.17,USD,17,Transferencia,Ads,Madrid,True,-0.26,False
+2025-03-03,TX-20250303-00102,Cliente_0297,Suscripción,Plan Enterprise,1809.35,USD,10,Transferencia,Partner,Santiago,False,1.657,False
+2025-03-06,TX-20250306-00103,Cliente_0461,Suscripción,Plan Basic,454.48,USD,17,Transferencia,Ads,Madrid,True,-0.34,False
+2025-03-05,TX-20250305-00104,Cliente_0460,Suscripción,Plan Basic,558.19,USD,19,Transferencia,Partner,Santiago,False,-0.187,False
+2025-03-05,TX-20250305-00105,Cliente_0228,Suscripción,Plan Basic,147.31,USD,6,Transferencia,Ads,Buenos Aires,False,-0.793,False
+2025-03-04,TX-20250304-00106,Cliente_0011,Suscripción,Plan Enterprise,1954.36,USD,11,PayPal,Web,CDMX,True,1.871,False
+2025-03-07,TX-20250307-00107,Cliente_0215,Suscripción,Plan Basic,108.36,USD,4,Tarjeta,Partner,Buenos Aires,True,-0.85,False
+2025-03-19,TX-20250319-00108,Cliente_0340,Suscripción,Plan Basic,320.49,USD,11,Tarjeta,Partner,Lima,False,-0.538,False
+2025-03-26,TX-20250326-00109,Cliente_0368,Suscripción,Plan Pro,526.19,USD,7,Transferencia,Partner,Lima,True,-0.234,False
+2025-03-28,TX-20250328-00110,Cliente_0425,Suscripción,Plan Basic,398.14,USD,16,PayPal,Web,Lima,True,-0.423,False
+2025-03-16,TX-20250316-00111,Cliente_0114,Suscripción,Plan Pro,291.28,USD,4,Tarjeta,Web,Buenos Aires,True,-0.581,False
+2025-03-08,TX-20250308-00112,Cliente_0286,Suscripción,Plan Pro,935.00,USD,13,Tarjeta,Web,Buenos Aires,False,0.368,False
+2025-03-09,TX-20250309-00113,Cliente_0047,Suscripción,Plan Pro,68.73,USD,1,Tarjeta,Partner,Madrid,False,-0.909,False
+2025-03-26,TX-20250326-00114,Cliente_0026,Suscripción,Plan Pro,240.41,USD,3,PayPal,Ads,Madrid,True,-0.656,False
+2025-03-22,TX-20250322-00115,Cliente_0400,Suscripción,Plan Pro,162.40,USD,2,Transferencia,Web,Bogotá,True,-0.771,False
+2025-03-28,TX-20250328-00116,Cliente_0489,Suscripción,Plan Enterprise,882.83,USD,5,PayPal,Partner,CDMX,True,0.291,False
+2025-03-18,TX-20250318-00117,Cliente_0308,Suscripción,Plan Basic,395.02,USD,16,PayPal,Web,Santiago,False,-0.428,False
+2025-03-25,TX-20250325-00118,Cliente_0068,Suscripción,Plan Enterprise,2666.19,USD,15,Tarjeta,Ads,Santiago,False,2.92,True
+2025-03-11,TX-20250311-00119,Cliente_0417,Suscripción,Plan Pro,771.26,USD,11,Transferencia,Web,Bogotá,False,0.127,False
+2025-03-15,TX-20250315-00120,Cliente_0193,Suscripción,Plan Basic,443.13,USD,16,Transferencia,Web,CDMX,False,-0.357,False
+2025-04-08,TX-20250408-00121,Cliente_0217,Suscripción,Plan Pro,445.28,USD,6,PayPal,Web,CDMX,True,-0.354,False
+2025-04-15,TX-20250415-00122,Cliente_0209,Suscripción,Plan Pro,282.52,USD,4,Transferencia,Ads,Bogotá,False,-0.594,False
+2025-04-11,TX-20250411-00123,Cliente_0368,Suscripción,Plan Basic,202.31,USD,8,PayPal,Partner,Lima,True,-0.712,False
+2025-04-10,TX-20250410-00124,Cliente_0190,Suscripción,Plan Pro,688.54,USD,9,Transferencia,Partner,Buenos Aires,False,0.005,False
+2025-04-08,TX-20250408-00125,Cliente_0335,Suscripción,Plan Pro,418.61,USD,6,Transferencia,Partner,Santiago,False,-0.393,False
+2025-04-28,TX-20250428-00126,Cliente_0240,Suscripción,Plan Enterprise,3708.52,USD,18,Transferencia,Web,Lima,False,4.457,True
+2025-04-14,TX-20250414-00127,Cliente_0245,Suscripción,Plan Basic,302.12,USD,11,PayPal,Partner,Bogotá,True,-0.565,False
+2025-04-20,TX-20250420-00128,Cliente_0402,Suscripción,Plan Pro,391.49,USD,5,Tarjeta,Web,Madrid,False,-0.433,False
+2025-04-23,TX-20250423-00129,Cliente_0089,Suscripción,Plan Basic,369.11,USD,13,PayPal,Partner,Madrid,False,-0.466,False
+2025-04-23,TX-20250423-00130,Cliente_0101,Suscripción,Plan Basic,29.68,USD,1,Tarjeta,Partner,Buenos Aires,False,-0.966,False
+2025-04-16,TX-20250416-00131,Cliente_0476,Suscripción,Plan Pro,1425.00,USD,18,PayPal,Ads,Lima,False,1.09,False
+2025-04-19,TX-20250419-00132,Cliente_0048,Suscripción,Plan Pro,1083.09,USD,13,Transferencia,Ads,Bogotá,False,0.586,False
+2025-04-18,TX-20250418-00133,Cliente_0361,Suscripción,Plan Basic,52.50,USD,2,Transferencia,Partner,Lima,True,-0.933,False
+2025-04-05,TX-20250405-00134,Cliente_0479,Suscripción,Plan Basic,570.98,USD,20,Transferencia,Web,Madrid,True,-0.168,False
+2025-04-13,TX-20250413-00135,Cliente_0498,Suscripción,Plan Basic,301.46,USD,12,Transferencia,Partner,Madrid,False,-0.566,False
+2025-04-24,TX-20250424-00136,Cliente_0473,Suscripción,Plan Enterprise,3784.72,USD,19,Transferencia,Web,Lima,True,4.569,True
+2025-04-22,TX-20250422-00137,Cliente_0260,Suscripción,Plan Basic,289.84,USD,12,PayPal,Web,Lima,True,-0.583,False
+2025-04-19,TX-20250419-00138,Cliente_0086,Suscripción,Plan Enterprise,741.23,USD,4,Transferencia,Ads,Buenos Aires,False,0.083,False
+2025-04-01,TX-20250401-00139,Cliente_0339,Suscripción,Plan Basic,324.08,USD,12,PayPal,Partner,CDMX,False,-0.532,False
+2025-04-16,TX-20250416-00140,Cliente_0382,Suscripción,Plan Basic,440.40,USD,15,Tarjeta,Partner,CDMX,True,-0.361,False
+2025-04-16,TX-20250416-00141,Cliente_0070,Suscripción,Plan Pro,704.05,USD,10,Transferencia,Web,Bogotá,True,0.028,False
+2025-04-28,TX-20250428-00142,Cliente_0060,Suscripción,Plan Basic,422.65,USD,17,Transferencia,Web,Buenos Aires,True,-0.387,False
+2025-04-22,TX-20250422-00143,Cliente_0364,Suscripción,Plan Pro,151.76,USD,2,PayPal,Ads,Bogotá,True,-0.786,False
+2025-04-13,TX-20250413-00144,Cliente_0387,Suscripción,Plan Pro,1460.76,USD,19,Transferencia,Partner,Lima,False,1.143,False
+2025-04-22,TX-20250422-00145,Cliente_0408,Suscripción,Plan Basic,183.98,USD,7,Tarjeta,Ads,Madrid,True,-0.739,False
+2025-04-23,TX-20250423-00146,Cliente_0135,Suscripción,Plan Enterprise,2520.00,USD,13,PayPal,Web,Lima,True,2.705,True
+2025-04-16,TX-20250416-00147,Cliente_0480,Suscripción,Plan Basic,202.07,USD,7,PayPal,Web,Buenos Aires,True,-0.712,False
+2025-04-05,TX-20250405-00148,Cliente_0468,Suscripción,Plan Basic,47.73,USD,2,PayPal,Partner,Lima,True,-0.94,False
+2025-04-23,TX-20250423-00149,Cliente_0088,Suscripción,Plan Basic,205.96,USD,8,Transferencia,Ads,CDMX,True,-0.706,False
+2025-04-17,TX-20250417-00150,Cliente_0468,Suscripción,Plan Pro,1510.11,USD,19,PayPal,Ads,Madrid,True,1.216,False
+2025-04-19,TX-20250419-00151,Cliente_0326,Suscripción,Plan Basic,261.09,USD,10,Tarjeta,Ads,Buenos Aires,False,-0.625,False
+2025-04-30,TX-20250430-00152,Cliente_0359,Suscripción,Plan Pro,81.00,USD,1,Tarjeta,Web,Lima,False,-0.891,False
+2025-04-13,TX-20250413-00153,Cliente_0439,Suscripción,Plan Basic,88.42,USD,3,PayPal,Partner,Madrid,False,-0.88,False
+2025-04-20,TX-20250420-00154,Cliente_0061,Suscripción,Plan Enterprise,563.16,USD,3,PayPal,Partner,CDMX,True,-0.18,False
+2025-04-01,TX-20250401-00155,Cliente_0048,Suscripción,Plan Pro,1054.10,USD,14,PayPal,Partner,Bogotá,False,0.544,False
+2025-04-14,TX-20250414-00156,Cliente_0412,Suscripción,Plan Basic,418.67,USD,15,PayPal,Ads,Bogotá,True,-0.393,False
+2025-04-30,TX-20250430-00157,Cliente_0007,Suscripción,Plan Enterprise,1651.20,USD,10,Transferencia,Ads,Santiago,True,1.424,False
+2025-04-10,TX-20250410-00158,Cliente_0459,Suscripción,Plan Basic,273.40,USD,11,Transferencia,Partner,Buenos Aires,False,-0.607,False
+2025-04-17,TX-20250417-00159,Cliente_0023,Suscripción,Plan Pro,209.55,USD,3,Tarjeta,Partner,Lima,False,-0.701,False
+2025-04-27,TX-20250427-00160,Cliente_0142,Suscripción,Plan Basic,349.86,USD,14,Tarjeta,Web,Lima,False,-0.494,False
+2025-05-02,TX-20250502-00161,Cliente_0312,Suscripción,Plan Pro,237.98,USD,3,PayPal,Partner,Bogotá,True,-0.659,False
+2025-05-03,TX-20250503-00162,Cliente_0448,Suscripción,Plan Basic,412.46,USD,14,Transferencia,Partner,Santiago,False,-0.402,False
+2025-05-08,TX-20250508-00163,Cliente_0427,Suscripción,Plan Enterprise,989.64,USD,5,PayPal,Ads,CDMX,False,0.449,False
+2025-05-25,TX-20250525-00164,Cliente_0099,Suscripción,Plan Basic,438.46,USD,17,Transferencia,Ads,CDMX,False,-0.364,False
+2025-05-09,TX-20250509-00165,Cliente_0003,Suscripción,Plan Pro,1097.18,USD,14,Transferencia,Ads,Buenos Aires,False,0.607,False
+2025-05-01,TX-20250501-00166,Cliente_0026,Suscripción,Plan Basic,92.70,USD,4,Transferencia,Web,Santiago,True,-0.873,False
+2025-05-31,TX-20250531-00167,Cliente_0144,Suscripción,Plan Pro,1283.28,USD,17,PayPal,Web,Bogotá,False,0.882,False
+2025-05-27,TX-20250527-00168,Cliente_0029,Suscripción,Plan Basic,148.26,USD,5,Transferencia,Web,Madrid,True,-0.792,False
+2025-05-31,TX-20250531-00169,Cliente_0423,Suscripción,Plan Basic,471.13,USD,19,Transferencia,Ads,Madrid,False,-0.316,False
+2025-05-22,TX-20250522-00170,Cliente_0419,Suscripción,Plan Basic,467.38,USD,17,Transferencia,Web,CDMX,True,-0.321,False
+2025-05-04,TX-20250504-00171,Cliente_0270,Suscripción,Plan Basic,78.07,USD,3,PayPal,Ads,Buenos Aires,True,-0.895,False
+2025-05-24,TX-20250524-00172,Cliente_0315,Suscripción,Plan Basic,295.44,USD,11,Transferencia,Ads,Lima,True,-0.575,False
+2025-05-14,TX-20250514-00173,Cliente_0027,Suscripción,Plan Basic,110.85,USD,4,PayPal,Ads,Madrid,False,-0.847,False
+2025-05-06,TX-20250506-00174,Cliente_0136,Suscripción,Plan Enterprise,193.61,USD,1,PayPal,Partner,Lima,False,-0.725,False
+2025-05-17,TX-20250517-00175,Cliente_0255,Suscripción,Plan Pro,1363.04,USD,20,Transferencia,Partner,Lima,True,0.999,False
+2025-05-02,TX-20250502-00176,Cliente_0308,Suscripción,Plan Enterprise,403.67,USD,2,PayPal,Partner,Buenos Aires,False,-0.415,False
+2025-05-07,TX-20250507-00177,Cliente_0206,Suscripción,Plan Basic,419.33,USD,18,Transferencia,Ads,CDMX,False,-0.392,False
+2025-05-06,TX-20250506-00178,Cliente_0046,Suscripción,Plan Enterprise,1331.53,USD,8,Tarjeta,Partner,Santiago,True,0.953,False
+2025-05-12,TX-20250512-00179,Cliente_0271,Suscripción,Plan Pro,1394.09,USD,20,Transferencia,Web,CDMX,True,1.045,False
+2025-05-25,TX-20250525-00180,Cliente_0318,Suscripción,Plan Pro,454.74,USD,6,Tarjeta,Ads,Buenos Aires,False,-0.34,False
+2025-05-14,TX-20250514-00181,Cliente_0271,Suscripción,Plan Enterprise,620.65,USD,3,Tarjeta,Partner,Lima,False,-0.095,False
+2025-05-10,TX-20250510-00182,Cliente_0289,Suscripción,Plan Pro,697.08,USD,9,PayPal,Web,Lima,False,0.017,False
+2025-05-08,TX-20250508-00183,Cliente_0079,Suscripción,Plan Enterprise,2272.48,USD,13,PayPal,Partner,Bogotá,True,2.34,True
+2025-05-05,TX-20250505-00184,Cliente_0254,Suscripción,Plan Pro,798.27,USD,10,PayPal,Ads,Lima,True,0.167,False
+2025-05-29,TX-20250529-00185,Cliente_0486,Suscripción,Plan Pro,797.26,USD,10,Tarjeta,Ads,Madrid,True,0.165,False
+2025-05-05,TX-20250505-00186,Cliente_0139,Suscripción,Plan Basic,483.47,USD,19,Transferencia,Web,Santiago,False,-0.297,False
+2025-05-20,TX-20250520-00187,Cliente_0200,Suscripción,Plan Pro,718.10,USD,9,Transferencia,Partner,CDMX,True,0.048,False
+2025-05-20,TX-20250520-00188,Cliente_0206,Suscripción,Plan Basic,537.22,USD,20,PayPal,Ads,Buenos Aires,True,-0.218,False
+2025-05-27,TX-20250527-00189,Cliente_0301,Suscripción,Plan Basic,122.38,USD,5,Transferencia,Ads,Madrid,True,-0.83,False
+2025-05-10,TX-20250510-00190,Cliente_0018,Suscripción,Plan Basic,491.54,USD,19,Tarjeta,Web,CDMX,False,-0.286,False
+2025-05-15,TX-20250515-00191,Cliente_0048,Suscripción,Plan Basic,254.68,USD,10,Tarjeta,Partner,Lima,True,-0.635,False
+2025-05-18,TX-20250518-00192,Cliente_0283,Suscripción,Plan Basic,229.17,USD,8,PayPal,Partner,Madrid,False,-0.672,False
+2025-05-17,TX-20250517-00193,Cliente_0308,Suscripción,Plan Pro,981.07,USD,13,Transferencia,Web,CDMX,False,0.436,False
+2025-05-10,TX-20250510-00194,Cliente_0393,Suscripción,Plan Basic,142.15,USD,5,PayPal,Partner,Bogotá,False,-0.801,False
+2025-05-07,TX-20250507-00195,Cliente_0263,Suscripción,Plan Enterprise,1791.34,USD,9,Tarjeta,Ads,CDMX,False,1.63,False
+2025-05-12,TX-20250512-00196,Cliente_0256,Suscripción,Plan Basic,514.20,USD,20,PayPal,Web,Bogotá,False,-0.252,False
+2025-05-18,TX-20250518-00197,Cliente_0425,Suscripción,Plan Pro,1446.78,USD,18,Tarjeta,Ads,Lima,True,1.123,False
+2025-05-16,TX-20250516-00198,Cliente_0260,Suscripción,Plan Pro,1041.56,USD,15,Transferencia,Ads,Madrid,True,0.525,False
+2025-05-08,TX-20250508-00199,Cliente_0192,Suscripción,Plan Pro,458.04,USD,7,PayPal,Web,Lima,False,-0.335,False
+2025-05-16,TX-20250516-00200,Cliente_0058,Suscripción,Plan Basic,29.58,USD,1,PayPal,Web,Santiago,False,-0.966,False
+2025-06-27,TX-20250627-00201,Cliente_0039,Suscripción,Plan Basic,473.50,USD,17,Tarjeta,Web,Buenos Aires,False,-0.312,False
+2025-06-09,TX-20250609-00202,Cliente_0167,Suscripción,Plan Pro,939.22,USD,12,Tarjeta,Partner,CDMX,False,0.374,False
+2025-06-22,TX-20250622-00203,Cliente_0451,Suscripción,Plan Pro,522.62,USD,7,Tarjeta,Partner,Santiago,True,-0.24,False
+2025-06-01,TX-20250601-00204,Cliente_0413,Suscripción,Plan Pro,679.11,USD,9,PayPal,Ads,Madrid,False,-0.009,False
+2025-06-13,TX-20250613-00205,Cliente_0120,Suscripción,Plan Enterprise,1471.28,USD,8,Transferencia,Web,CDMX,True,1.159,False
+2025-06-19,TX-20250619-00206,Cliente_0060,Suscripción,Plan Basic,369.89,USD,14,Transferencia,Partner,Madrid,False,-0.465,False
+2025-06-16,TX-20250616-00207,Cliente_0225,Suscripción,Plan Pro,1440.52,USD,20,Transferencia,Web,Madrid,True,1.113,False
+2025-06-24,TX-20250624-00208,Cliente_0156,Suscripción,Plan Basic,238.18,USD,9,PayPal,Partner,Bogotá,True,-0.659,False
+2025-06-05,TX-20250605-00209,Cliente_0462,Suscripción,Plan Pro,998.27,USD,15,Transferencia,Ads,Lima,False,0.461,False
+2025-06-20,TX-20250620-00210,Cliente_0006,Suscripción,Plan Basic,207.82,USD,7,Tarjeta,Partner,CDMX,True,-0.704,False
+2025-06-23,TX-20250623-00211,Cliente_0356,Suscripción,Plan Basic,292.86,USD,11,Tarjeta,Partner,CDMX,False,-0.578,False
+2025-06-05,TX-20250605-00212,Cliente_0418,Suscripción,Plan Pro,633.88,USD,9,PayPal,Ads,CDMX,True,-0.076,False
+2025-06-29,TX-20250629-00213,Cliente_0401,Suscripción,Plan Enterprise,1975.74,USD,12,Tarjeta,Partner,Bogotá,False,1.902,False
+2025-06-30,TX-20250630-00214,Cliente_0071,Suscripción,Plan Enterprise,2903.33,USD,14,Tarjeta,Ads,Lima,True,3.27,True
+2025-06-26,TX-20250626-00215,Cliente_0417,Suscripción,Plan Basic,242.13,USD,8,Transferencia,Web,Madrid,False,-0.653,False
+2025-06-23,TX-20250623-00216,Cliente_0217,Suscripción,Plan Pro,70.30,USD,1,Transferencia,Web,CDMX,False,-0.906,False
+2025-06-28,TX-20250628-00217,Cliente_0122,Suscripción,Plan Basic,112.72,USD,4,Transferencia,Web,Madrid,True,-0.844,False
+2025-06-28,TX-20250628-00218,Cliente_0023,Suscripción,Plan Pro,1287.44,USD,19,Tarjeta,Web,Lima,True,0.888,False
+2025-06-06,TX-20250606-00219,Cliente_0497,Suscripción,Plan Enterprise,1057.23,USD,6,Tarjeta,Web,Bogotá,True,0.548,False
+2025-06-18,TX-20250618-00220,Cliente_0247,Suscripción,Plan Pro,1157.04,USD,15,Transferencia,Web,Bogotá,True,0.695,False
+2025-06-09,TX-20250609-00221,Cliente_0427,Suscripción,Plan Basic,141.41,USD,5,Tarjeta,Ads,Lima,True,-0.802,False
+2025-06-20,TX-20250620-00222,Cliente_0324,Suscripción,Plan Basic,345.35,USD,12,Tarjeta,Web,Lima,True,-0.501,False
+2025-06-24,TX-20250624-00223,Cliente_0362,Suscripción,Plan Pro,1271.71,USD,16,Tarjeta,Partner,Santiago,True,0.865,False
+2025-06-11,TX-20250611-00224,Cliente_0270,Suscripción,Plan Pro,1087.70,USD,15,Tarjeta,Ads,Santiago,False,0.593,False
+2025-06-28,TX-20250628-00225,Cliente_0266,Suscripción,Plan Basic,501.23,USD,17,PayPal,Ads,Santiago,False,-0.271,False
+2025-06-24,TX-20250624-00226,Cliente_0426,Suscripción,Plan Pro,992.80,USD,14,Tarjeta,Ads,Madrid,False,0.453,False
+2025-06-13,TX-20250613-00227,Cliente_0060,Suscripción,Plan Basic,538.54,USD,19,Tarjeta,Partner,CDMX,False,-0.216,False
+2025-06-26,TX-20250626-00228,Cliente_0170,Suscripción,Plan Pro,584.39,USD,8,PayPal,Partner,Santiago,True,-0.149,False
+2025-06-01,TX-20250601-00229,Cliente_0314,Suscripción,Plan Basic,234.33,USD,8,Tarjeta,Web,Lima,False,-0.665,False
+2025-06-19,TX-20250619-00230,Cliente_0089,Suscripción,Plan Basic,214.44,USD,8,PayPal,Partner,CDMX,False,-0.694,False
+2025-06-10,TX-20250610-00231,Cliente_0304,Suscripción,Plan Basic,98.13,USD,4,Tarjeta,Ads,Madrid,True,-0.865,False
+2025-06-28,TX-20250628-00232,Cliente_0224,Suscripción,Plan Basic,408.29,USD,14,Transferencia,Partner,CDMX,False,-0.408,False
+2025-06-05,TX-20250605-00233,Cliente_0208,Suscripción,Plan Basic,347.29,USD,12,Transferencia,Partner,Lima,False,-0.498,False
+2025-06-09,TX-20250609-00234,Cliente_0351,Suscripción,Plan Basic,116.66,USD,4,PayPal,Partner,Santiago,True,-0.838,False
+2025-06-22,TX-20250622-00235,Cliente_0439,Suscripción,Plan Pro,1643.34,USD,20,Transferencia,Web,Madrid,False,1.412,False
+2025-06-15,TX-20250615-00236,Cliente_0380,Suscripción,Plan Pro,1437.50,USD,20,Tarjeta,Ads,Bogotá,False,1.109,False
+2025-06-16,TX-20250616-00237,Cliente_0312,Suscripción,Plan Pro,1086.70,USD,15,Transferencia,Ads,CDMX,True,0.592,False
+2025-06-24,TX-20250624-00238,Cliente_0433,Suscripción,Plan Enterprise,1829.38,USD,10,Transferencia,Partner,Santiago,True,1.687,False
+2025-06-16,TX-20250616-00239,Cliente_0325,Suscripción,Plan Basic,398.66,USD,15,Tarjeta,Web,Lima,False,-0.422,False
+2025-06-17,TX-20250617-00240,Cliente_0327,Suscripción,Plan Basic,608.03,USD,20,PayPal,Web,CDMX,True,-0.114,False
