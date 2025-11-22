@@ -6,10 +6,9 @@ import time
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Iterable
 
 import pandas as pd
-import numpy as np
 from os.path import relpath  # usado en _rel_to_base fallback
 
 from app.infrastructure.files import (
@@ -28,6 +27,7 @@ from app.application.report_full import build_full_report
 from app.application.outliers import apply_isolation_forest
 from app.application.rules import load_rules_for_process, describe_rules
 from app.application.pdf import build_pdf_from_template
+from app.application.multisource import unify_sources
 
 from app.services.profile_artifacts import (
     build_profile_csv_from_html,
@@ -55,7 +55,6 @@ STRICT_DASH_CHECK = os.getenv("STRICT_DASH_CHECK", "0") == "1"
 
 try:
     if not USE_AUTOSPEC_FALLBACK:
-        # Si existe un motor externo y NO forzamos el fallback, se usará ese.
         from app.application.autospec import auto_dashboard_spec  # type: ignore
     else:
         raise ImportError()
@@ -68,16 +67,7 @@ except Exception:
         process_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Genera un SPEC 'inteligente' y genérico a partir de los datos/roles:
-        - Detecta fecha principal, métrica principal (dinero, precio*cantidad, numérica).
-        - Selecciona dimensiones con cardinalidad útil (2..50) y prioriza nombres semánticos.
-        - KPIs: filas + suma/promedio si hay métrica.
-        - 4 gráficos por defecto:
-            1) Serie mensual (sum/cont).
-            2) % de nulos por columna.
-            3) Top-N por dimensión priorizada.
-            4) Heatmap Mes×Dimensión (o pie/hist si no aplica).
-        - Filtros: rango de fechas + primeras dimensiones + 'moneda' si existe.
+        Genera un SPEC 'inteligente' a partir de datos/roles.
         """
         import re
 
@@ -97,9 +87,9 @@ except Exception:
         def _num_from_any(s: pd.Series) -> pd.Series:
             return (
                 s.astype(str)
-                .str.replace(r"[^\d\-,\.]", "", regex=True)
-                .str.replace(".", "", regex=False)
-                .str.replace(",", ".", regex=False)
+                 .str.replace(r"[^\d\-,\.]", "", regex=True)
+                 .str.replace(".", "", regex=False)
+                 .str.replace(",", ".", regex=False)
             ).pipe(pd.to_numeric, errors="coerce")
 
         def _find_by_name(patterns: List[str]) -> List[str]:
@@ -129,7 +119,6 @@ except Exception:
         numeric_cols += [c for c in cols if _is_numeric(c)]
         numeric_cols = list(dict.fromkeys(numeric_cols))
 
-        # Heurística precio * cantidad
         qty_col = next(
             (
                 c
@@ -151,8 +140,9 @@ except Exception:
             None,
         )
 
-        derived_metric = None
-        primary_metric = None
+        derived_metric: Optional[str] = None
+        primary_metric: Optional[str] = None
+
         if money_cols:
             primary_metric = money_cols[0]
         elif price_col and qty_col:
@@ -160,7 +150,6 @@ except Exception:
             try:
                 price = _num_from_any(df[price_col])
                 qty = pd.to_numeric(df[qty_col], errors="coerce")
-                # ok mutar df_clean: solo añade una columna
                 df[derived_metric] = price * qty
                 primary_metric = derived_metric
             except Exception:
@@ -180,35 +169,15 @@ except Exception:
                 dims.append(c)
 
         priority = [
-            "categoria",
-            "category",
-            "producto",
-            "product",
-            "cliente",
-            "customer",
-            "usuario",
-            "user",
-            "ciudad",
-            "city",
-            "region",
-            "pais",
-            "country",
-            "metodo_pago",
-            "medio_pago",
-            "payment",
-            "pago",
-            "estado",
-            "estatus",
-            "status",
-            "prioridad",
-            "gerente",
-            "canal",
-            "tipo",
-            "vendedor",
-            "seller",
+            "categoria", "category", "producto", "product",
+            "cliente", "customer", "usuario", "user",
+            "ciudad", "city", "region", "pais", "country",
+            "metodo_pago", "medio_pago", "payment", "pago",
+            "estado", "estatus", "status",
+            "prioridad", "gerente", "canal", "tipo", "vendedor", "seller",
         ]
 
-        def _score_dim(c: str) -> tuple:
+        def _score_dim(c: str) -> tuple[int, int]:
             name = c.lower()
             prio = 0 if any(p in name for p in priority) else 1
             nun = df[c].nunique(dropna=True)
@@ -216,7 +185,6 @@ except Exception:
 
         dims = sorted(set(dims), key=_score_dim)[:6]
 
-        # Fallback mínimo: al menos 1 dimensión textual
         if not dims:
             text_like = [c for c in cols if not _is_numeric(c)]
             if text_like:
@@ -225,21 +193,12 @@ except Exception:
         # ---------- KPIs ----------
         kpis: List[Dict[str, Any]] = [{"title": "Filas", "op": "count_rows"}]
         if primary_metric:
-            kpis.append(
-                {"title": f"Suma de {primary_metric}", "op": "sum", "col": primary_metric}
-            )
-            kpis.append(
-                {
-                    "title": f"Promedio de {primary_metric}",
-                    "op": "mean",
-                    "col": primary_metric,
-                }
-            )
+            kpis.append({"title": f"Suma de {primary_metric}", "op": "sum", "col": primary_metric})
+            kpis.append({"title": f"Promedio de {primary_metric}", "op": "mean", "col": primary_metric})
 
         # ---------- Gráficos ----------
         charts: List[Dict[str, Any]] = []
 
-        # 1) Serie temporal por mes (sum o conteo)
         if primary_date:
             ts_title = f"{(primary_metric or 'Registros').capitalize()} por mes"
             charts.append(
@@ -260,7 +219,6 @@ except Exception:
                 }
             )
 
-        # 2) Nulos por columna (siempre útil)
         charts.append(
             {
                 "id": "nulls_by_col",
@@ -277,7 +235,6 @@ except Exception:
             }
         )
 
-        # 3) Top-N por dimensión priorizada
         if dims:
             d0 = dims[0]
             charts.append(
@@ -299,7 +256,6 @@ except Exception:
                 }
             )
 
-        # 4) Heatmap Mes × segunda dimensión (o pie/hist)
         if primary_date and len(dims) >= 2:
             d1 = dims[1]
             charts.append(
@@ -359,11 +315,8 @@ except Exception:
         for d in dims[:3]:
             filters.append({"field": d, "type": "categorical", "max_values": 50})
         if any(c for c in cols if c.lower() == "moneda"):
-            filters.append(
-                {"field": "moneda", "type": "categorical", "max_values": 50}
-            )
+            filters.append({"field": "moneda", "type": "categorical", "max_values": 50})
 
-        # ---------- Esquema ----------
         schema = {
             "roles": roles,
             "primary_date": primary_date,
@@ -392,12 +345,10 @@ except Exception:
 
 try:
     from app.application.recommender import build_generic_spec  # type: ignore
-except Exception:
-
+except Exception:  # pragma: no cover
     def build_generic_spec(
         df: pd.DataFrame, roles: Dict[str, str], title: str = "Dashboard"
     ) -> Dict[str, Any]:
-        """Fallback de layout seguro (conteos + nulos)."""
         first = df.columns[0]
         charts = [
             {
@@ -434,7 +385,6 @@ except Exception:
 
 # ============================================================
 
-# Etapas mostradas en el front
 STAGES = ["Subir archivo", "Perfilado", "Limpieza", "Dashboard", "Reporte"]
 
 
@@ -443,7 +393,6 @@ def now_iso() -> str:
 
 
 def _write(proc_id: str, status: Dict[str, Any]) -> None:
-    """Normaliza y guarda status.json (progress 0..100 + updated_at)."""
     status["updated_at"] = now_iso()
     try:
         p = int(status.get("progress", 0))
@@ -454,10 +403,6 @@ def _write(proc_id: str, status: Dict[str, Any]) -> None:
 
 
 def _rel_to_base(p: Path) -> str:
-    """
-    Devuelve p como ruta **relativa** a BASE_DIR, robusta en Windows/Linux/Mac.
-    Siempre normaliza a slashes ('/'), ideal para el front.
-    """
     base_abs = Path(BASE_DIR).resolve()
     p_abs = Path(p).resolve()
     try:
@@ -466,9 +411,16 @@ def _rel_to_base(p: Path) -> str:
     except Exception:
         return relpath(str(p_abs), start=str(base_abs)).replace("\\", "/")
 
-
 # ---------- Inferencia básica de tipos (RFN20) ----------
-def infer_column_type(series: pd.Series) -> str:
+def infer_column_type(series: pd.Series | pd.DataFrame) -> str:
+    # Si por alguna razón nos llega un DataFrame, intentamos reducirlo
+    if isinstance(series, pd.DataFrame):
+        if series.shape[1] == 1:
+            series = series.iloc[:, 0]
+        else:
+            # No tiene sentido inferir tipo de varias columnas a la vez
+            return "texto"
+
     s = series.dropna().astype(str).str.strip()
     if s.empty:
         return "texto"
@@ -485,12 +437,13 @@ def infer_column_type(series: pd.Series) -> str:
     # numérico
     sn = (
         s.str.replace(r"[.\s]", "", regex=True)
-        .str.replace(",", ".", regex=False)
+         .str.replace(",", ".", regex=False)
     )
     num = pd.to_numeric(sn, errors="coerce")
     if num.notna().mean() > 0.8:
         return "numérico"
     return "texto"
+
 
 
 def infer_types(df: pd.DataFrame) -> Dict[str, str]:
@@ -500,24 +453,34 @@ def infer_types(df: pd.DataFrame) -> Dict[str, str]:
 # --------------------------------------------------------
 
 
-def create_initial_process(file) -> Dict[str, Any]:
+def create_initial_process(files: Any) -> Dict[str, Any]:
     """
-    Crea proceso, valida/guarda archivo y deja status en 'queued'.
-    Estructura runs/{id}/ con artifacts/ e input/.
+    Crea proceso, valida/guarda uno o varios archivos y deja status en 'queued'.
+    Acepta:
+      - un solo UploadFile
+      - lista/tupla de UploadFile
     """
-    validate_filename_and_size(file)
+    if isinstance(files, (list, tuple)):
+        files_list: List[Any] = [f for f in files if f is not None]
+    else:
+        files_list = [files] if files is not None else []
 
-    # runs/{id}
+    if not files_list:
+        raise ValueError("No se recibieron archivos para crear el proceso.")
+
+    for f in files_list:
+        validate_filename_and_size(f)
+
     proc_dir = create_process_dir()
     (proc_dir / "artifacts").mkdir(parents=True, exist_ok=True)
 
-    # Guardar input en runs/{id}/input/
-    uploaded_path = save_upload(file, proc_dir)
+    uploaded_paths: List[Path] = [save_upload(f, proc_dir) for f in files_list]
+    main_name = uploaded_paths[0].name
 
-    # Estado inicial
     status: Dict[str, Any] = {
         "id": proc_dir.name,
-        "filename": uploaded_path.name,
+        "filename": main_name,                     # compat: primer archivo
+        "filenames": [p.name for p in uploaded_paths],  # lista completa
         "status": "queued",
         "progress": 0,
         "current_step": "Subir archivo",
@@ -534,22 +497,15 @@ def create_initial_process(file) -> Dict[str, Any]:
     }
     _write(proc_dir.name, status)
 
-    # Bitácora: creación
     append_history(
-        proc_dir.name, {"type": "process_created", "file": uploaded_path.name}
+        proc_dir.name,
+        {"type": "process_created", "files": [p.name for p in uploaded_paths]},
     )
 
-    return {"id": proc_dir.name, "uploaded_path": str(uploaded_path)}
+    return {"id": proc_dir.name, "uploaded_paths": [str(p) for p in uploaded_paths]}
 
 
 def _stage(proc_id: str, stage: str):
-    """
-    Context manager simple para registrar start/end + duración de una etapa.
-    Uso:
-        with _stage(proc_id, "Perfilado"):
-            ... trabajo ...
-    """
-
     class _Ctx:
         def __enter__(self_inner):
             self_inner.t0 = time.time()
@@ -587,17 +543,6 @@ def _stage(proc_id: str, stage: str):
 def process_pipeline(proc_id: str) -> None:
     """
     Procesa en background: queued → running → completed/failed.
-    Genera:
-      - reporte_perfilado.html
-      - reporte_perfilado.csv
-      - reporte_perfilado.pdf
-      - dataset_limpio.csv (con columnas is_outlier, outlier_score, outlier_method si aplica)
-      - auto_dashboard_spec.json (spec para render)
-      - dashboard.html (render usando auto_spec)
-      - reporte_integrado.html
-      - (opcional) reporte_integrado.pdf  [si GENERATE_PDF=1]
-    y actualiza status.json con métricas/resumen de limpieza.
-    Registra bitácora JSONL por etapa.
     """
     append_history(proc_id, {"type": "process_started"})
     profile_path: Optional[Path] = None
@@ -609,19 +554,26 @@ def process_pipeline(proc_id: str) -> None:
     inferred_dates: Dict[str, Any] = {}
 
     try:
-        # Cargar estado actual
         status = read_status(proc_id)
 
-        # Running
         status["status"] = "running"
         status["current_step"] = "Perfilado"
         status["progress"] = 10
         _write(proc_id, status)
 
-        # 1) Ingesta
+        # 1) Ingesta (uno o varios archivos de entrada)
         with _stage(proc_id, "Ingesta"):
-            uploaded = RUNS_DIR / proc_id / "input" / status["filename"]
-            df = read_dataframe(uploaded)
+            input_dir = RUNS_DIR / proc_id / "input"
+            filenames: Iterable[str] = status.get("filenames") or [status["filename"]]
+
+            named_dfs: List[tuple[str, pd.DataFrame]] = []
+            for name in filenames:
+                uploaded = input_dir / name
+                df_i = read_dataframe(uploaded)
+                named_dfs.append((name, df_i))
+
+            df = unify_sources(named_dfs)
+
             status["metrics"].update(
                 {"rows": int(df.shape[0]), "cols": int(df.shape[1])}
             )
@@ -633,7 +585,7 @@ def process_pipeline(proc_id: str) -> None:
                     "type": "ingest_info",
                     "rows": int(df.shape[0]),
                     "cols": int(df.shape[1]),
-                    "source": str(uploaded.name),
+                    "sources": list(filenames),
                 },
             )
 
@@ -661,7 +613,6 @@ def process_pipeline(proc_id: str) -> None:
         # 4) Perfilado → HTML + CSV + PDF
         artifacts = RUNS_DIR / proc_id / "artifacts"
         with _stage(proc_id, "Perfilado"):
-            # HTML (igual que antes)
             try:
                 profile_path = generate_profile_html(
                     df, artifacts, TEMPLATES_DIR, roles=roles
@@ -669,12 +620,8 @@ def process_pipeline(proc_id: str) -> None:
             except TypeError:
                 profile_path = generate_profile_html(df, artifacts, TEMPLATES_DIR)
 
-            # Registrar HTML
-            status["artifacts"]["reporte_perfilado.html"] = _rel_to_base(
-                profile_path
-            )
+            status["artifacts"]["reporte_perfilado.html"] = _rel_to_base(profile_path)
 
-            # ===== CSV y PDF del MISMO perfilado =====
             try:
                 perfil_csv_path = artifacts / "reporte_perfilado.csv"
                 perfil_pdf_path = artifacts / "reporte_perfilado.pdf"
@@ -682,14 +629,9 @@ def process_pipeline(proc_id: str) -> None:
                 build_profile_csv_from_html(profile_path, perfil_csv_path)
                 build_profile_pdf_from_html(profile_path, perfil_pdf_path)
 
-                status["artifacts"]["reporte_perfilado.csv"] = _rel_to_base(
-                    perfil_csv_path
-                )
-                status["artifacts"]["reporte_perfilado.pdf"] = _rel_to_base(
-                    perfil_pdf_path
-                )
-            except Exception as e:
-                # Si algo falla, dejamos registro pero no rompemos el proceso
+                status["artifacts"]["reporte_perfilado.csv"] = _rel_to_base(perfil_csv_path)
+                status["artifacts"]["reporte_perfilado.pdf"] = _rel_to_base(perfil_pdf_path)
+            except Exception as e:  # pragma: no cover
                 append_history(
                     proc_id,
                     {
@@ -698,7 +640,6 @@ def process_pipeline(proc_id: str) -> None:
                     },
                 )
 
-            # marcar etapa OK como antes
             for s in status["steps"]:
                 if s["name"] == "Perfilado":
                     s["status"] = "ok"
@@ -753,9 +694,7 @@ def process_pipeline(proc_id: str) -> None:
                     "outliers_ratio": float(out_summary.get("ratio", 0.0)),
                     "outliers_used_columns": out_summary.get("used_columns", []),
                     "outliers_contamination": float(
-                        out_summary.get(
-                            "contamination", OUTLIER_CONTAMINATION
-                        )
+                        out_summary.get("contamination", OUTLIER_CONTAMINATION)
                     ),
                 }
             )
@@ -775,7 +714,6 @@ def process_pipeline(proc_id: str) -> None:
         _write(proc_id, status)
 
         with _stage(proc_id, "Dashboard"):
-            # 6.a) Generar SPEC automático (3 KPI, 4 charts, 4 filtros) con título bonito
             spec = auto_dashboard_spec(
                 df_clean,
                 roles=status["metrics"]["inferred_types"],
@@ -783,7 +721,6 @@ def process_pipeline(proc_id: str) -> None:
                 process_id=proc_id,
             )
 
-            # Validación opcional (si existe spec_guard)
             if validate_dashboard is not None:
                 try:
                     health = validate_dashboard(
@@ -797,26 +734,21 @@ def process_pipeline(proc_id: str) -> None:
                             "blocking": bool(getattr(health, "blocking", False)),
                         },
                     )
-                    if STRICT_DASH_CHECK and bool(
-                        getattr(health, "blocking", False)
-                    ):
-                        # Sólo si has activado modo estricto
+                    if STRICT_DASH_CHECK and bool(getattr(health, "blocking", False)):
                         spec = build_generic_spec(
                             df_clean,
                             roles=status["metrics"]["inferred_types"],
                             title=f"Dashboard seguro · {status.get('filename','')}",
                         )
                 except Exception:
-                    # Si algo falla en validación, seguimos con el spec generado
+                    # si falla la validación, seguimos con el spec generado
                     pass
 
             auto_spec_path = artifacts / "auto_dashboard_spec.json"
             auto_spec_path.write_text(
                 json.dumps(spec, ensure_ascii=False, indent=2), encoding="utf-8"
             )
-            status["artifacts"]["auto_dashboard_spec.json"] = _rel_to_base(
-                auto_spec_path
-            )
+            status["artifacts"]["auto_dashboard_spec.json"] = _rel_to_base(auto_spec_path)
             append_history(
                 proc_id,
                 {
@@ -825,7 +757,6 @@ def process_pipeline(proc_id: str) -> None:
                 },
             )
 
-            # 6.b) Render del dashboard HTML usando el SPEC
             dash_path = generate_dashboard_html(
                 df_clean,
                 artifacts,
@@ -839,7 +770,7 @@ def process_pipeline(proc_id: str) -> None:
             status["progress"] = 85
             _write(proc_id, status)
 
-        # 7) Reporte integrado (HTML)
+        # 7) Reporte integrado (HTML + opcional PDF)
         status["current_step"] = "Reporte"
         status["progress"] = 90
         _write(proc_id, status)
@@ -861,27 +792,18 @@ def process_pipeline(proc_id: str) -> None:
                 ),
             }
             links = {
-                "dataset_limpio.csv": _rel_to_base(cleaned_csv)
-                if cleaned_csv
-                else "",
+                "dataset_limpio.csv": _rel_to_base(cleaned_csv) if cleaned_csv else "",
                 "dashboard.html": _rel_to_base(dash_path) if dash_path else "",
-                "auto_dashboard_spec.json": _rel_to_base(auto_spec_path)
-                if auto_spec_path
-                else "",
-                "reporte_perfilado.html": _rel_to_base(profile_path)
-                if profile_path
-                else "",
+                "auto_dashboard_spec.json": _rel_to_base(auto_spec_path) if auto_spec_path else "",
+                "reporte_perfilado.html": _rel_to_base(profile_path) if profile_path else "",
             }
             report_path = artifacts / "reporte_integrado.html"
             build_full_report(clean_summary, quality, links, report_path)
-            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(
-                report_path
-            )
+            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(report_path)
             for s in status["steps"]:
                 if s["name"] == "Reporte":
                     s["status"] = "ok"
 
-            # 7.b) (Opcional) PDF
             if os.getenv("GENERATE_PDF", "0") == "1":
                 try:
                     pdf_path = artifacts / "reporte_integrado.pdf"
@@ -892,50 +814,28 @@ def process_pipeline(proc_id: str) -> None:
                         "clean_summary": clean_summary,
                         "quality": quality,
                         "links": {
-                            "reporte_perfilado": links.get(
-                                "reporte_perfilado.html"
-                            )
-                            or "",
+                            "reporte_perfilado": links.get("reporte_perfilado.html") or "",
                             "dashboard": links.get("dashboard.html") or "",
                             "clean_csv": links.get("dataset_limpio.csv") or "",
-                            "auto_spec": links.get(
-                                "auto_dashboard_spec.json"
-                            )
-                            or "",
+                            "auto_spec": links.get("auto_dashboard_spec.json") or "",
                         },
                         "outliers": {
-                            "used_columns": status["metrics"].get(
-                                "outliers_used_columns", []
-                            ),
-                            "contamination": status["metrics"].get(
-                                "outliers_contamination", 0.0
-                            ),
-                            "outliers": status["metrics"].get(
-                                "outliers_count", 0
-                            ),
+                            "used_columns": status["metrics"].get("outliers_used_columns", []),
+                            "contamination": status["metrics"].get("outliers_contamination", 0.0),
+                            "outliers": status["metrics"].get("outliers_count", 0),
                             "total": int(quality["rows"]),
-                            "ratio": status["metrics"].get(
-                                "outliers_ratio", 0.0
-                            ),
+                            "ratio": status["metrics"].get("outliers_ratio", 0.0),
                         },
                     }
                     build_pdf_from_template("report.j2.html", pdf_path, ctx)
-                    status["artifacts"]["reporte_integrado.pdf"] = _rel_to_base(
-                        pdf_path
-                    )
+                    status["artifacts"]["reporte_integrado.pdf"] = _rel_to_base(pdf_path)
                     _write(proc_id, status)
                     append_history(
                         proc_id,
-                        {
-                            "type": "pdf_generated",
-                            "path": _rel_to_base(pdf_path),
-                        },
+                        {"type": "pdf_generated", "path": _rel_to_base(pdf_path)},
                     )
                 except Exception as e:
-                    append_history(
-                        proc_id,
-                        {"type": "pdf_failed", "error": str(e)},
-                    )
+                    append_history(proc_id, {"type": "pdf_failed", "error": str(e)})
 
         # 8) Final
         status["status"] = "completed"
@@ -946,25 +846,19 @@ def process_pipeline(proc_id: str) -> None:
         append_history(proc_id, {"type": "process_completed", "status": "completed"})
 
     except Exception as e:
-        # Manejo de error robusto: marca el proceso como failed y registra
         append_history(proc_id, {"type": "process_failed", "error": str(e)})
 
-        # Si no había status cargado, crea uno mínimo
         if not status:
             status = {
                 "id": proc_id,
                 "status": "failed",
                 "progress": 0,
                 "steps": [
-                    {
-                        "name": s,
-                        "status": "failed" if i > 0 else "ok",
-                    }
+                    {"name": s, "status": "failed" if i > 0 else "ok"}
                     for i, s in enumerate(STAGES)
                 ],
             }
 
-        # Marca paso actual y generales en failed
         status["status"] = "failed"
         status["error"] = str(e)
         status["progress"] = int(status.get("progress", 0))
