@@ -35,7 +35,9 @@ async function http<T = any>(url: string, opts: RequestInit = {}): Promise<T> {
 
 /* ======================== AUTH (passwordless) ======================== */
 
-export type User = { id: string; email: string; name?: string; plan?: string } | null;
+export type User =
+  | { id: string; email: string; name?: string; plan?: string }
+  | null;
 
 export const requestMagic = (email: string, name?: string) =>
   http<{ ok: true }>("/api/auth/request", {
@@ -43,29 +45,60 @@ export const requestMagic = (email: string, name?: string) =>
     body: JSON.stringify({ email, name }),
   });
 
-export const verifyMagic = (params: { token?: string; email?: string; code?: string }) =>
+export const verifyMagic = (params: {
+  token?: string;
+  email?: string;
+  code?: string;
+}) =>
   http<{ ok: true; user: NonNullable<User> }>("/api/auth/verify", {
     method: "POST",
     body: JSON.stringify(params),
   });
 
-export const logout = () => http<{ ok: true }>("/api/auth/logout", { method: "POST" });
+export const logout = () =>
+  http<{ ok: true }>("/api/auth/logout", { method: "POST" });
 
 export const me = () => http<{ user: User }>("/api/auth/me");
 
 /** Aliases (compat) */
-export const authRequestLogin = (email: string, name = "") => requestMagic(email, name);
-export const authVerifyToken = (token: string) => verifyMagic({ token });
-export const authVerifyOtp = (email: string, code: string) => verifyMagic({ email, code });
+export const authRequestLogin = (email: string, name = "") =>
+  requestMagic(email, name);
+export const authVerifyToken = (token: string) =>
+  verifyMagic({ token });
+export const authVerifyOtp = (email: string, code: string) =>
+  verifyMagic({ email, code });
 export const authLogout = () => logout();
 export const authMe = () => me();
 
 /* ======================== API de procesos ======================== */
 
+/** Versión original: un solo archivo */
 export async function uploadFile(file: File) {
   const fd = new FormData();
   fd.append("file", file);
   // NO agregamos Content-Type, el navegador pone el boundary correcto.
+  const res = await fetch(API + "/api/process", {
+    method: "POST",
+    credentials: "include",
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+/** NUEVO: varios archivos desde el Home.
+ * Por ahora el backend usa solo el primero (files[0]).
+ * Más adelante se puede cambiar a un endpoint multi-input.
+ */
+export async function uploadFiles(files: File[]) {
+  if (!files || files.length === 0) {
+    throw new Error("No se ha seleccionado ningún archivo.");
+  }
+
+  const fd = new FormData();
+  const first = files[0]; // el backend actual solo acepta uno
+  fd.append("file", first);
+
   const res = await fetch(API + "/api/process", {
     method: "POST",
     credentials: "include",
@@ -85,7 +118,9 @@ export function artifactUrl(rel: string) {
   const m = clean.match(/^runs\/([^/]+)\/artifacts\/([^/]+)$/i);
   if (m) {
     const [, pid, name] = m;
-    return `${API}/api/artifacts/${encodeURIComponent(pid)}/${encodeURIComponent(name)}`;
+    return `${API}/api/artifacts/${encodeURIComponent(
+      pid
+    )}/${encodeURIComponent(name)}`;
   }
   return `${API}/${clean}`;
 }
@@ -100,5 +135,7 @@ export function artifactDownloadUrl(rel: string) {
 
 export const getHistory = (id: string, limit?: number) =>
   http<{ items: any[]; count: number }>(
-    `/api/history/${encodeURIComponent(id)}${limit ? `?limit=${limit}` : ""}`
+    `/api/history/${encodeURIComponent(id)}${
+      limit ? `?limit=${limit}` : ""
+    }`
   );

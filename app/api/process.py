@@ -1,6 +1,8 @@
 # app/api/process.py
 from __future__ import annotations
+
 from pathlib import Path
+from typing import List
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, status
 from fastapi.responses import JSONResponse
@@ -10,23 +12,47 @@ from app.application.pipeline import create_initial_process, process_pipeline
 
 router = APIRouter()
 
+
 @router.post("/process", status_code=status.HTTP_201_CREATED)
-def process_file(background: BackgroundTasks, file: UploadFile = File(...)):
+def process_file(
+    background: BackgroundTasks,
+    files: List[UploadFile] | None = File(
+        default=None,
+        description="Uno o más archivos (campo 'files')",
+    ),
+    file: UploadFile | None = File(
+        default=None,
+        description="Compatibilidad: un solo archivo (campo 'file')",
+    ),
+):
     """
-    Crea un proceso (status: queued), guarda el archivo y lanza el pipeline en background.
+    Crea un proceso (status: queued), guarda uno o varios archivos
+    y lanza el pipeline en background.
     Devuelve el identificador del proceso con HTTP 201 Created.
     """
-    # 1) Validaciones básicas del upload
-    if not file or not file.filename:
-        raise HTTPException(status_code=400, detail="No se recibió un archivo.")
+    real_files: List[UploadFile] = []
+    if files:
+        real_files.extend(files)
+    if file is not None:
+        real_files.append(file)
 
-    ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Extensión no permitida.")
+    if not real_files:
+        raise HTTPException(status_code=400, detail="No se recibió ningún archivo.")
 
-    # 2) Crear el proceso y materializar entrada
+    # Validaciones básicas por archivo
+    for f in real_files:
+        if not f or not f.filename:
+            raise HTTPException(status_code=400, detail="Archivo sin nombre.")
+        ext = Path(f.filename).suffix.lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Extensión no permitida en {f.filename}.",
+            )
+
+    # 2) Crear el proceso y materializar entradas
     try:
-        init = create_initial_process(file)
+        init = create_initial_process(real_files)
     except HTTPException:
         # Errores de validación/negocio se propagan tal cual
         raise
@@ -41,7 +67,6 @@ def process_file(background: BackgroundTasks, file: UploadFile = File(...)):
     # 3) Ejecutar pipeline en background
     background.add_task(process_pipeline, process_id)
 
-    # 4) Respuesta explícita 201 (evita que algún middleware responda 200)
+    # 4) Respuesta explícita 201
     payload = {"id": process_id, "process_id": process_id, "status": "queued"}
     return JSONResponse(content=payload, status_code=status.HTTP_201_CREATED)
-
