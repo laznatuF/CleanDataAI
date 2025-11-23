@@ -1,0 +1,26 @@
+﻿id_venta,id_pedido,fecha,hora,producto,cantidad,precio_unitario,descuento,envio_costo,impuestos,total_cobrado,estado,canal
+ML-0001,50011000,2025-10-07,13:21,Polera Oversize,1,5990,0,0,0,5990,pagado,MercadoLibre
+ML-0002,50011001,2025-10-05,09:37,Polera Oversize,1,24990,0,0,0,24990,pagado,MercadoLibre
+ML-0003,50011002,2025-10-11,16:18,Polera Oversize,1,15990,0,0,0,15990,pagado,MercadoLibre
+ML-0004,50011003,2025-10-01,18:40,Audífonos BT,2,9990,2000,5990,0,23970,entregado,MercadoLibre
+ML-0005,50011004,2025-10-07,17:40,Collar Luna,2,19990,0,3990,0,43970,entregado,MercadoLibre
+ML-0006,50011005,2025-10-07,10:33,Collar Luna,1,24990,0,3990,0,28980,pagado,MercadoLibre
+ML-0007,50011006,2025-10-01,19:14,Collar Luna,1,34990,0,3990,0,38980,pagado,MercadoLibre
+ML-0008,50011007,2025-10-10,20:31,Taza Cerámica,2,12990,2000,4490,0,28470,pagado,MercadoLibre
+ML-0009,50011008,2025-10-09,13:57,Taza Cerámica,3,34990,2000,5990,0,108960,pagado,MercadoLibre
+ML-0010,50011009,2025-10-06,13:45,Aros Minimal,2,24990,1000,3990,0,52970,cancelado,MercadoLibre
+ML-0011,50011010,2025-10-07,15:56,Aros Minimal,3,34990,0,0,0,104970,pagado,MercadoLibre
+ML-0012,50011011,2025-10-10,13:22,Aros Minimal,3,12990,0,4490,0,43460,pagado,MercadoLibre
+ML-0013,50011012,2025-10-03,18:39,Velas Aromáticas,2,24990,0,4490,0,54470,entregado,MercadoLibre
+ML-0014,50011013,2025-10-05,15:25,Velas Aromáticas,2,34990,0,0,0,69980,cancelado,MercadoLibre
+ML-0015,50011014,2025-10-11,21:45,Velas Aromáticas,1,12990,1000,0,0,11990,pagado,MercadoLibre
+ML-0016,50011015,2025-10-04,21:10,Cojín Decor,1,34990,1000,4490,0,38480,cancelado,MercadoLibre
+ML-0017,50011016,2025-10-05,21:22,Cojín Decor,3,9990,2000,5990,0,33960,cancelado,MercadoLibre
+ML-0018,50011017,2025-10-10,16:46,Cojín Decor,2,19990,2000,5990,0,43970,pagado,MercadoLibre
+ML-0019,50011018,2025-10-11,17:52,Powerbank 10k,1,9990,0,3990,0,13980,pagado,MercadoLibre
+ML-0020,50011019,2025-10-11,17:03,Powerbank 10k,1,12990,0,4490,0,17480,entregado,MercadoLibre
+ML-0021,50011020,2025-10-11,14:32,Powerbank 10k,3,7990,0,5990,0,29960,cancelado,MercadoLibre
+ML-0022,50011021,2025-10-06,21:54,Blazer Casual,3,34990,0,0,0,104970,entregado,MercadoLibre
+ML-0023,50011022,2025-10-11,12:13,Mini Trípode,1,15990,1000,5990,0,20980,entregado,MercadoLibre
+ML-0024,50011023,2025-10-10,19:16,Mini Trípode,2,19990,0,3990,0,43970,entregado,MercadoLibre
+ML-0025,50011024,2025-10-05,17:22,Mini Trípode,3,12990,1000,3990,0,41960,entregado,MercadoLibre
