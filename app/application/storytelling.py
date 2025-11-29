@@ -1,125 +1,416 @@
 # app/application/storytelling.py
 from __future__ import annotations
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional, List
 import pandas as pd
 import numpy as np
+import json
 
-# --- Helpers de Formato ---
-def _fmt(val) -> str:
-    """Formatea números de forma legible (1.2k, $500, etc)."""
-    if isinstance(val, (int, float)):
-        if val > 1_000_000: return f"{val/1_000_000:.1f}M"
-        if val > 1_000: return f"{val/1_000:.1f}k"
-        return f"{val:,.0f}".replace(",", ".")
-    return str(val)
+from app.core.config import GROQ_API_KEY, GROQ_MODEL
 
-def _get_metric_name(chart: Dict[str, Any]) -> str:
-    """Intenta obtener un nombre legible para la métrica (ej: 'Monto Total')."""
-    return chart.get("encoding", {}).get("y", {}).get("field") or \
-           chart.get("encoding", {}).get("value", {}).get("field") or "Registros"
+try:
+    from groq import Groq
+except ImportError:
+    Groq = None
 
-# --- Generadores de Texto por Tipo de Gráfico ---
-
-def _narrate_bar(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    enc = chart.get("encoding", {})
-    x_col = enc.get("x", {}).get("field")
-    y_col = enc.get("y", {}).get("field") or "__row__"
-    agg = enc.get("y", {}).get("aggregate", "count")
+# ==========================================
+# 1. CLIENTE GROQ (Lazy Load)
+# ==========================================
+def _get_groq_client():
+    if not Groq:
+        print("⚠️ Error: Librería 'groq' no instalada. Ejecuta 'pip install groq'.")
+        return None
     
-    if not x_col: return "Gráfico de barras estándar."
-
-    # Recalcular datos ligeros
-    if y_col == "__row__":
-        ser = df[x_col].value_counts()
-        metric_label = "registros"
-    else:
-        # Asumiendo columna numérica limpia
-        clean_y = pd.to_numeric(df[y_col].astype(str).str.replace(r"[^\d\.]", "", regex=True), errors='coerce')
-        if agg == "sum":
-            ser = df.groupby(x_col)[y_col].apply(lambda x: pd.to_numeric(x, errors='coerce').sum())
-        else:
-            ser = df.groupby(x_col)[y_col].apply(lambda x: pd.to_numeric(x, errors='coerce').mean())
-        metric_label = y_col
-
-    ser = ser.sort_values(ascending=False)
-    top1 = ser.index[0]
-    val1 = ser.iloc[0]
-    total = ser.sum()
-    pct = (val1 / total * 100) if total > 0 else 0
-    
-    text = (f"Se observa una clara preferencia por <strong>{top1}</strong>, que lidera con "
-            f"<strong>{_fmt(val1)}</strong> ({metric_label}). Esto representa un <strong>{pct:.1f}%</strong> del total analizado. ")
-    
-    if len(ser) > 1:
-        top2 = ser.index[1]
-        text += f"En segundo lugar se encuentra <strong>{top2}</strong>. "
-    
-    if len(ser) > 5:
-        tail_sum = ser.iloc[5:].sum()
-        tail_pct = (tail_sum / total * 100) if total > 0 else 0
-        text += f"El resto de las {len(ser)-5} categorías menores agrupan un {tail_pct:.1f}% del volumen, mostrando una distribución {'concentrada' if pct > 40 else 'fragmentada'}."
+    if not GROQ_API_KEY:
+        print("⚠️ Error: GROQ_API_KEY no encontrada en variables de entorno (.env).")
+        return None
         
-    return text
+    return Groq(api_key=GROQ_API_KEY)
 
-def _narrate_line(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    enc = chart.get("encoding", {})
-    date_col = enc.get("x", {}).get("field")
-    if not date_col: return "Análisis temporal."
+# ==========================================
+# HELPERS NUMÉRICOS
+# ==========================================
+
+def _fmt_number(value: float, decimals: int = 0) -> str:
+    """
+    Formatea números con separador de miles y decimales.
+    Usa formato estándar 1,234.5 (no se localiza a es-ES para evitar dependencias).
+    """
+    if pd.isna(value):
+        return "-"
+    return f"{value:,.{decimals}f}"
+
+def _safe_numeric(series: pd.Series) -> pd.Series:
+    """Convierte de forma segura a numérico."""
+    return pd.to_numeric(series, errors="coerce")
+
+# ==========================================
+# 2. CONTEXTO GLOBAL DEL DATASET
+# ==========================================
+
+def get_dataset_fingerprint(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
+    """
+    Analiza el CSV completo y los KPIs para crear un 'Contexto Estratégico'.
+    Esto le da a la IA la visión global antes de escribir sobre un gráfico específico.
+    """
+    # 1. KPIs Globales del Dashboard
+    kpis = spec.get("kpis", [])
+    kpi_text: List[str] = []
+    for k in kpis:
+        val: str | float = "-"
+        col = k.get("col")
+        op = k.get("op")
+        
+        if op == "count_rows":
+            val = _fmt_number(len(df))
+        elif col and col in df.columns:
+            series = _safe_numeric(df[col])
+            if op == "sum":
+                val = _fmt_number(series.sum())
+            elif op == "mean":
+                val = _fmt_number(series.mean(), decimals=2)
+            elif op == "nunique":
+                val = _fmt_number(df[col].nunique())
+        kpi_text.append(f"- {k.get('title', 'Métrica')}: {val}")
+
+    # 2. Análisis Temporal (si existe fecha)
+    schema = spec.get("schema", {})
+    date_col: Optional[str] = schema.get("primary_date")
+    metric_col: Optional[str] = schema.get("primary_metric")
+    trend_text = "No se detectó serie temporal clara."
     
-    # Simple check de tendencia (primer vs último tercio)
-    # Nota: Lógica simplificada para el ejemplo
-    return (f"Este gráfico muestra la evolución temporal basada en <strong>{date_col}</strong>. "
-            "Permite identificar estacionalidades, picos de actividad o tendencias de crecimiento "
-            "a lo largo del periodo capturado en los datos.")
+    if date_col and date_col in df.columns:
+        try:
+            cols = [date_col]
+            if metric_col and metric_col in df.columns:
+                cols.append(metric_col)
+            df_t = df[cols].copy()
 
-def _narrate_pie(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    enc = chart.get("encoding", {})
-    cat_col = enc.get("category", {}).get("field")
-    if not cat_col: return "Distribución de partes."
+            df_t[date_col] = pd.to_datetime(df_t[date_col], errors="coerce")
+            df_t = df_t.dropna(subset=[date_col]).sort_values(date_col)
+            
+            if not df_t.empty:
+                start = df_t[date_col].iloc[0]
+                end = df_t[date_col].iloc[-1]
+                duration = (end - start).days
+                trend_text = f"Periodo analizado: del {start.date()} al {end.date()} ({duration} días)."
+                
+                if metric_col and metric_col in df_t.columns:
+                    s_num = _safe_numeric(df_t[metric_col])
+                    v_start = s_num.head(3).mean()
+                    v_end = s_num.tail(3).mean()
+                    if v_start > 0 and not pd.isna(v_end):
+                        growth = ((v_end - v_start) / v_start) * 100
+                        trend_text += (
+                            f" Tendencia global: "
+                            f"{'crecimiento' if growth >= 0 else 'caída'} "
+                            f"del {_fmt_number(growth, 1)}%."
+                        )
+        except Exception as e:
+            trend_text += f" (Error calculando tendencias: {str(e)})"
+
+    # 3. Concentración (Pareto) sobre la primera dimensión
+    pareto_text = ""
+    dims: List[str] = schema.get("dims", []) or []
+    if dims and metric_col and metric_col in df.columns and dims[0] in df.columns:
+        dim = dims[0]
+        try:
+            grouped = df.groupby(dim)[metric_col].sum().sort_values(ascending=False)
+            grouped = _safe_numeric(grouped)
+            total_val = grouped.sum()
+            if total_val > 0:
+                top_3_val = grouped.head(3).sum()
+                top_3_pct = (top_3_val / total_val) * 100
+                top_3_labels = ", ".join([str(idx) for idx in grouped.head(3).index])
+                pareto_text = (
+                    f"Concentración: el Top 3 de '{dim}' "
+                    f"({top_3_labels}) representa el {_fmt_number(top_3_pct, 1)}% del total."
+                )
+        except Exception:
+            pareto_text = ""
+
+    parts = [
+        "CONTEXTO GLOBAL DEL NEGOCIO:",
+        *kpi_text,
+        trend_text,
+    ]
+    if pareto_text:
+        parts.append(pareto_text)
+
+    return "\n".join(parts)
+
+# ==========================================
+# 3. PREPARACIÓN LOCAL DEL GRÁFICO (MATEMÁTICA EXACTA)
+# ==========================================
+
+def _summarize_categorical_distribution(
+    series: pd.Series,
+    values: Optional[pd.Series] = None,
+    max_items: int = 5,
+    value_label: str = "valor"
+) -> str:
+    """
+    Calcula tabla de categorías + participación porcentual.
+    Devuelve un resumen tipo:
+    'Total X. Top categorías: Ropa 41.3% (12,345); Tecnología 32.1% (9,567); Otros 8.7% (2,345)'
+    """
+    if values is not None:
+        v = _safe_numeric(values)
+        grouped = v.groupby(series).sum().sort_values(ascending=False)
+        metric_desc = f"sobre '{value_label}'"
+    else:
+        grouped = series.value_counts(dropna=False)
+        metric_desc = "por frecuencia de registros"
     
-    unique_count = df[cat_col].nunique()
-    return (f"Desglose de la composición por <strong>{cat_col}</strong>. "
-            f"Al haber {unique_count} elementos únicos, este visual ayuda a comprender rápidamente "
-            "qué segmentos tienen mayor peso relativo en el conjunto de datos.")
+    grouped = grouped.dropna()
+    total = grouped.sum()
+    if total <= 0 or grouped.empty:
+        return "No se pudo calcular una distribución categórica significativa."
+    
+    n_cats = len(grouped)
+    top = grouped.head(max_items)
+    chunks: List[str] = []
 
-def _narrate_calendar(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    return ("<strong>Mapa de Calor de Calendario:</strong> Este visual avanzado permite detectar patrones diarios específicos. "
-            "Las zonas más oscuras indican días de alta intensidad. Es ideal para encontrar patrones semanales "
-            "(ej: más ventas los viernes) o estacionalidad mensual.")
+    for cat, val in top.items():
+        pct = (val / total) * 100
+        # Ejemplo que recibirá la IA: Ropa: 41.3% (12,345)
+        chunks.append(f"{cat}: {_fmt_number(pct, 1)}% ({_fmt_number(val)})")
 
-def _narrate_treemap(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    enc = chart.get("encoding", {})
-    cat = enc.get("category", {}).get("field")
-    sub = enc.get("sub", {}).get("field")
-    return (f"Vista jerárquica que cruza <strong>{cat}</strong> con <strong>{sub}</strong>. "
-            "El tamaño de los recuadros indica el volumen. Permite identificar rápidamente qué sub-elementos "
-            "son los protagonistas dentro de cada categoría principal.")
+    if n_cats > max_items:
+        rest_val = grouped.iloc[max_items:].sum()
+        rest_pct = (rest_val / total) * 100
+        chunks.append(f"Otros: {_fmt_number(rest_pct, 1)}% ({_fmt_number(rest_val)})")
 
-def _narrate_scatter(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
+    return (
+        f"Distribución categórica {metric_desc}. "
+        f"Total acumulado: {_fmt_number(total)}. "
+        f"Categorías analizadas: {n_cats}. "
+        f"Detalle principales categorías: " + "; ".join(chunks)
+    )
+
+def _summarize_line_series(
+    df: pd.DataFrame,
+    x: str,
+    y: Optional[str]
+) -> str:
+    """Resumen numérico de una serie temporal."""
+    if x not in df.columns:
+        return f"Columna temporal '{x}' no encontrada en el dataset."
+
+    df_t = df.copy()
+    df_t[x] = pd.to_datetime(df_t[x], errors="coerce")
+    df_t = df_t.dropna(subset=[x]).sort_values(x)
+
+    if df_t.empty:
+        return f"No se encontraron fechas válidas en '{x}'."
+
+    if y and y in df_t.columns:
+        df_t[y] = _safe_numeric(df_t[y])
+        df_t = df_t.dropna(subset=[y])
+        if df_t.empty:
+            return f"Serie temporal '{y}' por '{x}' sin valores numéricos válidos."
+    else:
+        # Si no hay métrica explícita, contamos registros por periodo
+        df_t["_count"] = 1
+        y = "_count"
+        df_t = df_t.groupby(x)[y].sum().reset_index()
+
+    start_date = df_t[x].iloc[0].date()
+    end_date = df_t[x].iloc[-1].date()
+    n_points = len(df_t)
+
+    s = df_t[y]
+    first_val = s.iloc[0]
+    last_val = s.iloc[-1]
+    min_val = s.min()
+    max_val = s.max()
+    avg_val = s.mean()
+    change_abs = last_val - first_val
+    if first_val not in (0, None) and not pd.isna(first_val):
+        change_pct = (change_abs / first_val) * 100
+    else:
+        change_pct = np.nan
+
+    return (
+        f"Serie temporal '{y}' sobre '{x}'. "
+        f"Periodo: {start_date} a {end_date} con {n_points} puntos. "
+        f"Valor inicial: {_fmt_number(first_val)}; valor final: {_fmt_number(last_val)} "
+        f"({'+' if change_abs >= 0 else ''}{_fmt_number(change_abs)} / "
+        f"{_fmt_number(change_pct, 1)}%). "
+        f"Mínimo: {_fmt_number(min_val)}; máximo: {_fmt_number(max_val)}; "
+        f"promedio: {_fmt_number(avg_val, 2)}."
+    )
+
+def _summarize_numeric_distribution(series: pd.Series, col_name: str) -> str:
+    """Resumen estadístico compacto para histogramas."""
+    s = _safe_numeric(series).dropna()
+    if s.empty:
+        return f"No hay datos numéricos válidos para '{col_name}'."
+    desc = {
+        "mínimo": s.min(),
+        "p25": s.quantile(0.25),
+        "mediana": s.median(),
+        "p75": s.quantile(0.75),
+        "máximo": s.max(),
+        "promedio": s.mean(),
+        "desv_std": s.std(),
+        "conteo": s.count(),
+    }
+    parts = [
+        f"{k}: {_fmt_number(v, 2) if k != 'conteo' else _fmt_number(v)}"
+        for k, v in desc.items()
+    ]
+    return f"Distribución estadística de '{col_name}'. " + "; ".join(parts)
+
+def _summarize_chart_data(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
+    """
+    Extrae los datos específicos que muestra el gráfico para enviarlos a la IA.
+    Aquí es donde se calcula la 'matemática exacta' (porcentajes, totales, etc.).
+    """
     enc = chart.get("encoding", {})
     x = enc.get("x", {}).get("field")
     y = enc.get("y", {}).get("field")
-    return (f"Análisis de correlación entre <strong>{x}</strong> y <strong>{y}</strong>. "
-            "Si los puntos forman una línea diagonal, indica una relación fuerte. "
-            "Puntos dispersos aleatoriamente sugieren que no hay relación directa entre ambas variables.")
-
-def _narrate_generic(chart: Dict[str, Any]) -> str:
+    # A veces 'value' se usa en lugar de 'y' (ej. Pie charts)
+    val_col = y or enc.get("value", {}).get("field")
     title = chart.get("title", "Gráfico")
-    return f"Análisis visual de: {title}. Permite comparar métricas clave para la toma de decisiones."
+    
+    if not x:
+        return f"Gráfico '{title}' sin ejes de datos claros."
+    if x not in df.columns:
+        return f"Columna '{x}' no encontrada en el dataset."
 
-# --- Master Function ---
+    chart_type = chart.get("type", "generic")
 
-def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
-    """Genera un párrafo explicativo en HTML para un gráfico dado."""
-    ctype = chart.get("type")
     try:
-        if ctype == "bar": return _narrate_bar(df, chart)
-        if ctype == "line": return _narrate_line(df, chart)
-        if ctype == "pie": return _narrate_pie(df, chart)
-        if ctype == "calendar": return _narrate_calendar(df, chart)
-        if ctype == "treemap": return _narrate_treemap(df, chart)
-        if ctype == "scatter": return _narrate_scatter(df, chart)
-    except Exception:
-        return _narrate_generic(chart)
+        if chart_type in ["bar", "pie", "treemap"]:
+            if val_col and val_col in df.columns:
+                return _summarize_categorical_distribution(
+                    df[x],
+                    df[val_col],
+                    max_items=5,
+                    value_label=val_col,
+                )
+            # Conteo de frecuencia si no hay métrica numérica
+            return _summarize_categorical_distribution(
+                df[x],
+                values=None,
+                max_items=5,
+                value_label="frecuencia",
+            )
+
+        elif chart_type == "line":
+            return _summarize_line_series(df, x, val_col)
+
+        elif chart_type == "histogram":
+            if x in df.columns:
+                return _summarize_numeric_distribution(df[x], x)
+            return f"Columna '{x}' no encontrada para histograma."
+
+        else:
+            # Fallback genérico: tratamos como categórico
+            if val_col and val_col in df.columns:
+                return _summarize_categorical_distribution(
+                    df[x],
+                    df[val_col],
+                    max_items=5,
+                    value_label=val_col,
+                )
+            return _summarize_categorical_distribution(
+                df[x],
+                None,
+                max_items=5,
+                value_label="frecuencia",
+            )
+    except Exception as e:
+        return f"No se pudieron extraer datos detallados del gráfico '{title}': {e}"
+
+# ==========================================
+# 4. CEREBRO IA (Consultor Senior)
+# ==========================================
+
+def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dict[str, Any] = None) -> str:
+    client = _get_groq_client()
+    
+    # Check de fallo inicial
+    if not client:
+        return (
+            f"Análisis visual de: <b>{chart.get('title')}</b>. "
+            "<br><span style='color:red; font-size:0.8em;'>(Error: Falta API Key de Groq o librería no instalada)</span>"
+        )
+
+    # Preparar Prompt
+    global_context = get_dataset_fingerprint(df, full_spec) if full_spec else "Sin contexto global disponible."
+    local_data = _summarize_chart_data(df, chart)
+    title = chart.get('title', 'Gráfico')
+    
+    system_prompt = (
+        "Actúa como un Consultor de Negocios Senior (Nivel McKinsey/BCG). Estás escribiendo un reporte ejecutivo.\n"
+        "Recibirás:\n"
+        "1. CONTEXTO GLOBAL: La salud general del dataset (KPIs, tendencias macro).\n"
+        "2. DATOS DEL GRÁFICO: Un resumen numérico exacto de la visualización (con porcentajes y totales calculados en Python).\n\n"
+        "TU OBJETIVO: Escribir un párrafo de análisis (aprox 60-80 palabras) que INTERPRETE los datos.\n"
+        "REGLAS:\n"
+        "- NO describas obviedades ('La barra más alta es X'). Di POR QUÉ importa ('X lidera el mercado, representando el 40% del total').\n"
+        "- Usa etiquetas HTML <b> para resaltar cifras y nombres clave.\n"
+        "- Conecta el hallazgo local con el contexto global si es posible.\n"
+        "- Usa un tono profesional, directo y perspicaz en Español neutro."
+    )
+    
+    user_msg = (
+        f"--- CONTEXTO GLOBAL ---\n{global_context}\n\n"
+        f"--- GRÁFICO A ANALIZAR ---\n"
+        f"Título: {title}\n"
+        f"Datos extraídos (ya calculados con Python): {local_data}\n\n"
+        "Dame el análisis estratégico:"
+    )
+
+    try:
+        resp = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_msg}
+            ],
+            model=GROQ_MODEL,
+            temperature=0.3,  # Bajo para ser preciso y no alucinar
+            max_tokens=300
+        )
+        return resp.choices[0].message.content
         
-    return _narrate_generic(chart)
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ Error Groq AI: {error_msg}")
+        # Devolvemos el error visible en el PDF para que puedas depurar
+        return (
+            f"Análisis visual de: <b>{title}</b>.<br>"
+            f"<span style='color:red; font-size:0.8em; background:#fee;'>Error de IA: {error_msg}</span>"
+        )
+
+# ==========================================
+# 5. CONCLUSIÓN FINAL (Para el final del reporte)
+# ==========================================
+
+def generate_executive_conclusion(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
+    """Genera un párrafo final de cierre para todo el reporte."""
+    client = _get_groq_client()
+    if not client:
+        return ""
+    
+    context = get_dataset_fingerprint(df, spec)
+    prompt = (
+        "Basado en este contexto global del negocio, escribe una 'Conclusión Ejecutiva' de 1 párrafo.\n"
+        "Resume el rendimiento general, destaca la métrica más impactante y da 1 recomendación estratégica breve.\n"
+        "Usa HTML <b> para resaltar lo importante."
+    )
+    try:
+        resp = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Eres un experto estratega de datos."},
+                {"role": "user", "content": f"{context}\n\n{prompt}"}
+            ],
+            model=GROQ_MODEL,
+            temperature=0.4,
+            max_tokens=300,
+        )
+        return resp.choices[0].message.content
+    except Exception as e:
+        print(f"❌ Error Groq IA (conclusión): {e}")
+        return ""
