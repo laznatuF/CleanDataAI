@@ -77,10 +77,17 @@ export async function uploadFile(file: File) {
 
 export const getStatus = (id: string) => http(`/api/status/${id}`);
 
+export const requestDashboard = (id: string) =>
+  http<{ ok: boolean; message?: string }>(
+    `/api/process/${encodeURIComponent(id)}/dashboard`,
+    { method: "POST" }
+  );
+
 /** Construye URL a artefactos protegidos por el backend.
  * Si recibe "runs/<id>/artifacts/<name>", lo mapea a "/api/artifacts/<id>/<name>".
  * Para cualquier otra ruta relativa, hace fallback a `${API}/${rel}`. */
-export function artifactUrl(rel: string) {
+  
+ export function artifactUrl(rel: string) {
   const clean = (rel || "").replace(/^\/+/, "");
   const m = clean.match(/^runs\/([^/]+)\/artifacts\/([^/]+)$/i);
   if (m) {
