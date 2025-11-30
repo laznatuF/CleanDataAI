@@ -35,5 +35,9 @@ weasyprint
 pyyaml==6.0.2
 pytest==8.2.1
 
+# Reporte Narrativo con IA
+python-dotenv
+groq
+
 
 

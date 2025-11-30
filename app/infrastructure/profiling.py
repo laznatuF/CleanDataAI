@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import pandas as pd
+import numpy as np
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 def _fmt_pct(x: float, total: int) -> str:
@@ -23,7 +24,8 @@ def _examples(s: pd.Series, k: int = 5) -> List[str]:
     return [str(v)[:80] for v in vals[:k]]
 
 def _tukey_outliers_count(num: pd.Series) -> int:
-    s = pd.to_numeric(num, errors="coerce").dropna()
+    # CORRECCIÓN: .astype(float) convierte NAType a np.nan, evitando el error
+    s = pd.to_numeric(num, errors="coerce").dropna().astype(float)
     if s.empty:
         return 0
     q1, q3 = s.quantile(0.25), s.quantile(0.75)
@@ -32,24 +34,40 @@ def _tukey_outliers_count(num: pd.Series) -> int:
     return int(((s < lo) | (s > hi)).sum())
 
 def _num_details(s: pd.Series) -> str:
-    sn = pd.to_numeric(s, errors="coerce").dropna()
+    # CORRECCIÓN: .astype(float) es CRÍTICO aquí para evitar error con NAType
+    sn = pd.to_numeric(s, errors="coerce").dropna().astype(float)
+    
     if sn.empty:
         return "—"
+        
     p5 = sn.quantile(0.05)
     p95 = sn.quantile(0.95)
+    
+    # Helper local para formatear sin miedo a errores
+    def _f(val):
+        try:
+            return f"{float(val):g}"
+        except Exception:
+            return "—"
+
     parts = [
-        f"min={sn.min():g}",
-        f"p5={p5:g}",
-        f"media={sn.mean():g}",
-        f"p95={p95:g}",
-        f"max={sn.max():g}",
-        f"std={sn.std():g}",
+        f"min={_f(sn.min())}",
+        f"p5={_f(p5)}",
+        f"media={_f(sn.mean())}",
+        f"p95={_f(p95)}",
+        f"max={_f(sn.max())}",
+        f"std={_f(sn.std())}",
         f"outliers_Tukey={_tukey_outliers_count(s)}",
     ]
     return ", ".join(parts)
 
 def _date_details(s: pd.Series) -> str:
-    dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
+    # Mantenemos tu corrección de fechas que ya estaba bien
+    try:
+        dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False, format="mixed")
+    except ValueError:
+        dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
+        
     ok = int(dt.notna().sum())
     if ok == 0:
         return "parseadas=0%"
@@ -140,7 +158,11 @@ def alerts_for(role: str, col: str, s: pd.Series, n_rows: int) -> List[str]:
         if dup > 0:
             alerts.append(f"duplicados={dup}")
     if role == "fecha":
-        dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
+        try:
+            dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False, format="mixed")
+        except ValueError:
+            dt = pd.to_datetime(s, errors="coerce", dayfirst=True, utc=False)
+
         ok = int(dt.notna().sum())
         if ok / max(1, n_rows) < 0.7:
             alerts.append("baja_lectura_fechas")

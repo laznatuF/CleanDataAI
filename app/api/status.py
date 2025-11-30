@@ -1,106 +1,55 @@
-# app/api/status.py
-from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException
-from app.core.config import RUNS_DIR
-from app.infrastructure.files import read_json
+# app/api/process.py
+from __future__ import annotations
+from pathlib import Path
+
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, status
+from fastapi.responses import JSONResponse
+
+from app.core.config import ALLOWED_EXTENSIONS
+from app.application.pipeline import create_initial_process, run_ingestion_phase, run_dashboard_phase
 
 router = APIRouter()
 
-STAGES = ["Subir archivo", "Perfilado", "Limpieza", "Dashboard", "Reporte"]
+@router.post("/process", status_code=status.HTTP_201_CREATED)
+def process_file(background: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    [FASE 1] Sube archivo, perfila y limpia.
+    Retorna status 'queued' -> luego pasará a 'waiting_dashboard'.
+    NO genera dashboard en este paso para ser rápido.
+    """
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="No se recibió un archivo.")
 
-SLUG_TO_TITLE = {
-    "ingesta": "Subir archivo",
-    "subir": "Subir archivo",
-    "upload": "Subir archivo",
-    "perfilado": "Perfilado",
-    "profiling": "Perfilado",
-    "limpieza": "Limpieza",
-    "cleaning": "Limpieza",
-    "dashboard": "Dashboard",
-    "reporte": "Reporte",
-    "report": "Reporte",
-}
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Extensión no permitida.")
 
-FINISHED = {"ok", "done", "success", "completed", "finished"}
-RUNNING = {"running", "in_progress", "processing"}
-FAILED = {"failed", "error"}
-PENDING = {"pending", "queued", "waiting"}
-
-def normalize_status(s: Optional[str]) -> str:
-    s = (s or "").strip().lower()
-    if s in FINISHED: return "ok"
-    if s in RUNNING:  return "running"
-    if s in FAILED:   return "failed"
-    if s in PENDING or not s: return "pending"
-    return s
-
-def normalize_name(name: Optional[str]) -> str:
-    n = (name or "").strip()
-    key = n.lower()
-    return SLUG_TO_TITLE.get(key, n)
-
-def upgrade_steps(raw_steps: Any, current_step: Optional[str] = None) -> List[Dict[str, str]]:
-    current_title = normalize_name(current_step) if current_step else None
-    if isinstance(raw_steps, list) and raw_steps and isinstance(raw_steps[0], dict):
-        mapped: Dict[str, str] = {}
-        for item in raw_steps:
-            name = normalize_name(item.get("name") or item.get("step") or item.get("title"))
-            status = normalize_status(item.get("status"))
-            mapped[name] = status
-        out: List[Dict[str, str]] = []
-        for stage in STAGES:
-            st = mapped.get(stage, "pending")
-            if stage == current_title and st == "pending":
-                st = "running"
-            out.append({"name": stage, "status": st})
-        return out
-
-    if isinstance(raw_steps, list) and (not raw_steps or isinstance(raw_steps[0], str)):
-        finished_titles = {normalize_name(x) for x in (raw_steps or [])}
-        out: List[Dict[str, str]] = []
-        for stage in STAGES:
-            if stage in finished_titles:
-                out.append({"name": stage, "status": "ok"})
-            elif current_title and stage == current_title:
-                out.append({"name": stage, "status": "running"})
-            else:
-                out.append({"name": stage, "status": "pending"})
-        return out
-
-    return [
-        {
-            "name": stage,
-            "status": "running" if current_title and stage == current_title else "pending",
-        }
-        for stage in STAGES
-    ]
-
-def infer_progress(steps: List[Dict[str, str]]) -> int:
-    if not steps: return 0
-    score = 0.0
-    for s in steps:
-        st = s.get("status")
-        if st == "ok": score += 1.0
-        elif st == "running": score += 0.5
-    return max(0, min(100, int(round(100 * score / len(steps)))))
-
-@router.get("/status/{process_id}")
-def get_status(process_id: str):
-    status_path = RUNS_DIR / process_id / "status.json"
-    if not status_path.exists():
-        raise HTTPException(status_code=404, detail="Proceso no encontrado")
-
-    data = read_json(status_path) or {}
-    data["status"] = normalize_status(data.get("status"))
-    if data.get("current_step"):
-        data["current_step"] = normalize_name(data["current_step"])
-    data["steps"] = upgrade_steps(data.get("steps"), current_step=data.get("current_step"))
-
-    if "progress" not in data or data.get("progress") is None:
-        data["progress"] = infer_progress(data["steps"])
     try:
-        p = int(data["progress"])
-        data["progress"] = max(0, min(100, p))
-    except Exception:
-        data["progress"] = infer_progress(data["steps"])
-    return data
+        init = create_initial_process(file)
+    except HTTPException: raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al iniciar: {e!s}")
+
+    process_id = init.get("id")
+    
+    # Lanzamos solo la Fase 1 (Ingesta + Limpieza)
+    # Esto es lo que hace que sea "rápido" al principio, porque no calcula gráficos pesados.
+    background.add_task(run_ingestion_phase, process_id)
+
+    return JSONResponse(content={"id": process_id, "status": "queued"}, status_code=status.HTTP_201_CREATED)
+
+
+@router.post("/process/{process_id}/dashboard", status_code=status.HTTP_202_ACCEPTED)
+def generate_dashboard(process_id: str, background: BackgroundTasks):
+    """
+    [FASE 2] Genera Dashboard y Reporte Final a demanda.
+    Se llama cuando el usuario hace clic en el botón "Generar Dashboard".
+    """
+    # Validamos que el ID no sea vacío, aunque el path param lo garantiza en gran medida
+    if not process_id:
+        raise HTTPException(status_code=400, detail="ID de proceso inválido.")
+
+    # Lanzamos la Fase 2 (Dashboard + PDF)
+    background.add_task(run_dashboard_phase, process_id)
+    
+    return {"ok": True, "message": "Generación de dashboard iniciada."}

@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import os
 import secrets
+from dotenv import load_dotenv  # <--- IMPORTANTE: Necesario para leer el .env
 
 # ------------------------------
 # Helpers
@@ -17,10 +18,15 @@ def _as_bool(val: str | int | None, default: bool = False) -> bool:
 
 
 # ------------------------------
-# Rutas base
+# Rutas base y Carga de Entorno
 # ------------------------------
 # Raíz del repo (contiene /app, /runs, /data, /frontend, etc.)
 BASE_DIR: Path = Path(__file__).resolve().parents[2]
+
+# Carga las variables del archivo .env que está en la raíz
+# Si no haces esto, os.getenv no encontrará nada.
+load_dotenv(BASE_DIR / ".env")
+
 APP_DIR: Path = BASE_DIR / "app"
 
 # ------------------------------
@@ -89,3 +95,16 @@ OUTLIER_RANDOM_STATE: int = int(os.getenv("OUTLIER_RANDOM_STATE", "42"))
 # En producción ponlos a 0/false para exigir sesión/JWT.
 ARTIFACTS_PUBLIC: bool = _as_bool(os.getenv("ARTIFACTS_PUBLIC", "1"), default=True)
 HISTORY_PUBLIC: bool = _as_bool(os.getenv("HISTORY_PUBLIC", "1"), default=True)
+
+# ------------------------------
+# IA Generativa (Groq / Llama 3)
+# ------------------------------
+GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+# Modelo recomendado: Llama 3 70B (más inteligente)
+GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+# Verificación de seguridad en consola al iniciar
+if not GROQ_API_KEY:
+    print("⚠️  ADVERTENCIA: No se encontró GROQ_API_KEY. El análisis narrativo usará plantillas genéricas.")
+else:
+    print(f"✅ IA Activada: Usando Groq con modelo {GROQ_MODEL}")

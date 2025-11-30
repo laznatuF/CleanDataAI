@@ -2,7 +2,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import Header from "../../components/Header";
-import { getStatus, artifactUrl /* , getHistory */ } from "../../libs/api";
+import {
+  getStatus,
+  artifactUrl,
+  requestDashboard /* , getHistory */,
+} from "../../libs/api";
 
 const PROCESS_FINISHED = new Set([
   "ok",
@@ -70,6 +74,9 @@ export default function StatusPage() {
   const perfilRel = data?.artifacts?.["reporte_perfilado.html"];
   const dashRel = data?.artifacts?.["dashboard.html"];
   const csvRel = data?.artifacts?.["dataset_limpio.csv"];
+  
+  // [NUEVO] Reporte Narrativo
+  const narrativeRel = data?.artifacts?.["reporte_narrativo.html"];
 
   // CSV y PDF específicos del perfilado de datos
   const perfilCsvRel = data?.artifacts?.["reporte_perfilado.csv"];
@@ -85,6 +92,9 @@ export default function StatusPage() {
   const dashHref = dashRel ? artifactUrl(dashRel) : null;
   const csvHref = csvRel ? artifactUrl(csvRel) : null;
   const repHref = repRel ? artifactUrl(repRel) : null;
+  
+  // [NUEVO] URL del reporte narrativo
+  const narrativeHref = narrativeRel ? artifactUrl(narrativeRel) : null;
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
@@ -116,14 +126,18 @@ export default function StatusPage() {
             <div className="mb-4 text-sm text-slate-500">Cargando estado…</div>
           )}
 
-          {/* ======= Tarjetas de artefactos (prototipo) ======= */}
+          {/* ======= Tarjetas de artefactos ======= */}
           <ArtifactsPanel
+            runId={runId}
+            status={statusStr}
+            currentStep={data?.current_step ?? null}
             perfilHref={perfilHref}
             perfilCsvHref={perfilCsvHref}
             perfilPdfHref={perfilPdfHref}
             csvHref={csvHref}
             dashHref={dashHref}
             repHref={repHref}
+            narrativeHref={narrativeHref} // Pasamos la nueva prop
           />
         </div>
       </main>
@@ -131,25 +145,43 @@ export default function StatusPage() {
   );
 }
 
-/* ---------- Tarjetas de artefactos (prototipo) ---------- */
+/* ---------- Tarjetas de artefactos ---------- */
 
 type ArtifactsPanelProps = {
+  runId: string;
+  status: string;
+  currentStep?: string | null;
   perfilHref: string | null;
   perfilCsvHref: string | null;
   perfilPdfHref: string | null;
   csvHref: string | null;
   dashHref: string | null;
   repHref: string | null;
+  narrativeHref: string | null; // Nueva prop
 };
 
 function ArtifactsPanel({
+  runId,
+  status,
+  currentStep,
   perfilHref,
   perfilCsvHref,
   perfilPdfHref,
   csvHref,
   dashHref,
   repHref,
+  narrativeHref,
 }: ArtifactsPanelProps) {
+  const [dashLoading, setDashLoading] = useState(false);
+  const [dashError, setDashError] = useState<string | null>(null);
+
+  // Si aparece dashboard.html, dejamos de mostrar "Generando..."
+  useEffect(() => {
+    if (dashHref) {
+      setDashLoading(false);
+    }
+  }, [dashHref]);
+
   const btnPrimary =
     "inline-flex items-center justify-center rounded-full bg-[#F28C18] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#d9730d] focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40 disabled:opacity-60";
   const btnSecondary =
@@ -161,18 +193,8 @@ function ArtifactsPanel({
 
   const ReadyBadge = () => (
     <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-      <svg
-        viewBox="0 0 24 24"
-        className="mr-1 h-3.5 w-3.5"
-        stroke="currentColor"
-        fill="none"
-      >
-        <path
-          d="M5 13l4 4 10-10"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+      <svg viewBox="0 0 24 24" className="mr-1 h-3.5 w-3.5" stroke="currentColor" fill="none">
+        <path d="M5 13l4 4 10-10" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       Listo
     </span>
@@ -191,274 +213,177 @@ function ArtifactsPanel({
   const perfilReady = !!perfilHref;
   const csvReady = !!csvHref;
   const dashReady = !!dashHref;
-  // repReady no se muestra porque ese artefacto es solo de planes de pago
+  const narrativeReady = !!narrativeHref; // Estado para el nuevo reporte
+
+  // ¿Estamos en medio de la generación del dashboard?
+  const dashInProgress =
+    !dashReady &&
+    (dashLoading || (status === "running" && currentStep === "Dashboard"));
+
+  async function handleGenerateDashboard() {
+    if (!runId || dashReady || dashLoading) return;
+    try {
+      setDashError(null);
+      setDashLoading(true);
+      await requestDashboard(runId);
+    } catch (err: any) {
+      setDashLoading(false);
+      setDashError(
+        err?.message || "Error al iniciar la generación del dashboard"
+      );
+    }
+  }
 
   return (
     <>
       {/* Grid de artefactos */}
       <section className="mt-2">
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {/* PERFILADO */}
+          
+          {/* 1. PERFILADO */}
           <article className={cardBase}>
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
                     <circle cx="11" cy="11" r="4.5" strokeWidth={1.8} />
-                    <path
-                      d="m15 15 3.5 3.5"
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                    />
+                    <path d="m15 15 3.5 3.5" strokeWidth={1.8} strokeLinecap="round" />
                   </svg>
                 </div>
                 <StatusBadge ready={perfilReady} />
               </div>
 
-              <h3 className="text-sm font-semibold text-slate-900">
-                Perfilado de datos
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Vista rápida de calidad, tipos de datos y valores atípicos.
-              </p>
+              <h3 className="text-sm font-semibold text-slate-900">Perfilado de datos</h3>
+              <p className="mt-1 text-xs text-slate-500">Vista rápida de calidad, tipos de datos y valores atípicos.</p>
             </div>
-
-            {/* botones Ver + Descargar */}
             <div className="mt-4 flex flex-col gap-2">
-              {/* Ver → abre la vista de perfilado con CSV y PDF opcionales */}
               <Link
-                to={
-                  perfilHref
-                    ? `/perfilado?url=${encodeURIComponent(perfilHref)}${
-                        perfilCsvHref
-                          ? `&csv=${encodeURIComponent(perfilCsvHref)}`
-                          : ""
-                      }${
-                        perfilPdfHref
-                          ? `&pdf=${encodeURIComponent(perfilPdfHref)}`
-                          : ""
-                      }`
-                    : "#"
-                }
-                className={
-                  btnPrimary +
-                  (!perfilHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
-                }
+                to={perfilHref ? `/perfilado?url=${encodeURIComponent(perfilHref)}${perfilCsvHref ? `&csv=${encodeURIComponent(perfilCsvHref)}` : ""}${perfilPdfHref ? `&pdf=${encodeURIComponent(perfilPdfHref)}` : ""}` : "#"}
+                className={btnPrimary + (!perfilHref ? " pointer-events-none opacity-40 cursor-default" : "")}
               >
                 Ver
               </Link>
-
-              {/* Descargar → descarga el HTML de perfilado tal cual */}
               <a
                 href={perfilHref ?? undefined}
                 download
-                className={
-                  btnSecondary +
-                  (!perfilHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
-                }
+                className={btnSecondary + (!perfilHref ? " pointer-events-none opacity-40 cursor-default" : "")}
               >
                 Descargar
               </a>
             </div>
           </article>
 
-          {/* ARCHIVO LIMPIO */}
+          {/* 2. ARCHIVO LIMPIO */}
           <article className={cardBase}>
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
-                    <rect
-                      x="6"
-                      y="3"
-                      width="12"
-                      height="18"
-                      rx="2"
-                      strokeWidth={1.8}
-                    />
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
+                    <rect x="6" y="3" width="12" height="18" rx="2" strokeWidth={1.8} />
                     <path d="M9 9h6M9 13h4" strokeWidth={1.6} />
                   </svg>
                 </div>
                 <StatusBadge ready={csvReady} />
               </div>
 
-              <h3 className="text-sm font-semibold text-slate-900">
-                Archivo limpio (CSV)
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Datos listos para análisis o carga en tu herramienta favorita.
-              </p>
+              <h3 className="text-sm font-semibold text-slate-900">Archivo limpio (CSV)</h3>
+              <p className="mt-1 text-xs text-slate-500">Datos listos para análisis o carga en tu herramienta favorita.</p>
             </div>
-
             <div className="mt-4 flex flex-col gap-2">
-              {/* Ver → abre la página de vista previa del CSV */}
               <Link
-                to={csvHref ? `/csv-preview?url=${encodeURIComponent(csvHref)}` : "#"}
-                className={
-                  btnPrimary +
-                  (!csvHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
+              to={
+              csvHref
+               ? `/csv-preview?url=${encodeURIComponent(csvHref)}&id=${encodeURIComponent(runId)}`
+               : "#"
                 }
-              >
-                Ver
+              className={btnPrimary + (!csvHref ? " pointer-events-none opacity-40 cursor-default" : "")}
+>
+              Ver
               </Link>
 
-              {/* Descargar → CSV limpio */}
               <a
                 href={csvHref ?? undefined}
                 download
-                className={
-                  btnSecondary +
-                  (!csvHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
-                }
+                className={btnSecondary + (!csvHref ? " pointer-events-none opacity-40 cursor-default" : "")}
               >
                 Descargar
               </a>
             </div>
           </article>
 
-          {/* DASHBOARD */}
+          {/* 3. DASHBOARD */}
           <article className={cardBase}>
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
-                    <rect
-                      x="4"
-                      y="4"
-                      width="16"
-                      height="16"
-                      rx="2"
-                      strokeWidth={1.7}
-                    />
-                    <path
-                      d="M8 16v-3M12 16V8M16 16v-4"
-                      strokeWidth={1.7}
-                      strokeLinecap="round"
-                    />
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
+                    <rect x="4" y="4" width="16" height="16" rx="2" strokeWidth={1.7} />
+                    <path d="M8 16v-3M12 16V8M16 16v-4" strokeWidth={1.7} strokeLinecap="round" />
                   </svg>
                 </div>
-                <StatusBadge ready={dashReady} />
+                {dashReady ? <ReadyBadge /> : dashInProgress ? <GeneratingBadge /> : null}
               </div>
 
               <h3 className="text-sm font-semibold text-slate-900">Dashboard</h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Gráficos interactivos listos para compartir con tu equipo.
-              </p>
+              <p className="mt-1 text-xs text-slate-500">Gráficos interactivos listos para compartir con tu equipo.</p>
             </div>
 
             <div className="mt-4 flex flex-col gap-2">
-              <a
-                href={dashHref ?? undefined}
-                target="_blank"
-                rel="noreferrer"
-                className={
-                  btnPrimary +
-                  (!dashHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
-                }
-              >
-                Ver
-              </a>
-              <a
-                href={dashHref ?? undefined}
-                download
-                className={
-                  btnSecondary +
-                  (!dashHref
-                    ? " pointer-events-none opacity-40 cursor-default"
-                    : "")
-                }
-              >
-                Descargar
-              </a>
+              {dashReady ? (
+                <>
+                  <a href={dashHref ?? undefined} target="_blank" rel="noreferrer" className={btnPrimary}>
+                    Ver
+                  </a>
+                  <a href={dashHref ?? undefined} download className={btnSecondary}>
+                    Descargar
+                  </a>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDashboard}
+                    disabled={!csvHref || !runId || dashInProgress}
+                    className={btnPrimary + (!csvHref || !runId || dashInProgress ? " opacity-40 cursor-not-allowed" : "")}
+                  >
+                    {dashInProgress ? "Generando…" : "Generar dashboard"}
+                  </button>
+                  {dashError && <p className="mt-1 text-xs text-red-600">{dashError}</p>}
+                </>
+              )}
             </div>
           </article>
 
-          {/* REPORTE ANALÍTICO / DESCRIPTIVO */}
-          <article className={cardBase}>
+          {/* 4. REPORTE NARRATIVO AI (NUEVO) */}
+          <article className={cardBase + " border-indigo-200 bg-indigo-50/50"}>
             <div>
               <div className="mb-4 flex items-center justify-between">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFE4C2] text-[#F28C18]">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
-                    <rect
-                      x="5"
-                      y="3"
-                      width="14"
-                      height="18"
-                      rx="2"
-                      strokeWidth={1.8}
-                    />
-                    <path d="M8 9h8M8 12h6M8 15h5" strokeWidth={1.5} />
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+                   {/* Icono de Documento AI */}
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth={1.8} />
+                    <path d="M14 2v6h6" strokeWidth={1.8} />
+                    <path d="M16 13H8M16 17H8M10 9H8" strokeWidth={1.8} strokeLinecap="round" />
                   </svg>
                 </div>
-
-                {/* Candado / solo planes de pago */}
-                <span className="inline-flex items-center text-[11px] font-medium text-slate-500">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="mr-1 h-3.5 w-3.5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
-                    <rect
-                      x="5"
-                      y="11"
-                      width="14"
-                      height="9"
-                      rx="2"
-                      strokeWidth={1.6}
-                    />
-                    <path d="M9 11V9a3 3 0 0 1 6 0v2" strokeWidth={1.6} />
-                  </svg>
-                  Solo planes de pago
-                </span>
+                {/* Se activa junto con el dashboard */}
+                {narrativeReady ? <ReadyBadge /> : dashInProgress ? <GeneratingBadge /> : null}
               </div>
 
-              <h3 className="text-sm font-semibold text-slate-900">
-                Reporte analítico y descriptivo
-              </h3>
-              <p className="mt-1 text-xs text-slate-500">
-                Documento listo para descargar, compartir o adjuntar en informes.
-              </p>
+              <h3 className="text-sm font-semibold text-slate-900">Reporte Narrativo AI</h3>
+              <p className="mt-1 text-xs text-slate-500">Análisis automático y storytelling generado por IA.</p>
             </div>
 
-            <div className="mt-4 flex justify-center">
-              <button
-                type="button"
-                className={btnPrimary + " opacity-40 cursor-not-allowed"}
-                disabled={isFree || !repHref}
-              >
-                Generar reporte
-              </button>
+            <div className="mt-4 flex flex-col gap-2">
+              {narrativeReady ? (
+                <a href={narrativeHref ?? undefined} target="_blank" rel="noreferrer" className={btnPrimary + " bg-indigo-600 hover:bg-indigo-700"}>
+                  Leer Reporte
+                </a>
+              ) : (
+                <div className="text-xs text-center text-slate-400 py-2">
+                   Se generará con el Dashboard
+                </div>
+              )}
             </div>
           </article>
         </div>
@@ -467,25 +392,11 @@ function ArtifactsPanel({
       {/* Texto de versión gratis */}
       <section className="mt-8">
         <div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-4 shadow-sm">
-          <div className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">
-            i
-          </div>
+          <div className="mt-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-white">i</div>
           <div className="text-sm text-slate-700">
-            <p>
-              Esta es la{" "}
-              <span className="font-semibold">versión gratis</span>. Permite
-              descargar solo el archivo limpio y el dashboard del primer proceso
-              completado.
-            </p>
+            <p>Esta es la <span className="font-semibold">versión con IA habilitada</span>. Disfruta de tu reporte narrativo gratuito.</p>
             <p className="mt-1">
-              Para crear el reporte y desbloquear funciones extra,&nbsp;
-              <Link
-                to="/planes"
-                className="font-semibold text-[#1d7fd6] hover:underline"
-              >
-                actualiza tu plan
-              </Link>
-              .
+              Para descargas PDF avanzadas y reportes editables, <Link to="/planes" className="font-semibold text-[#1d7fd6] hover:underline">actualiza tu plan</Link>.
             </p>
           </div>
         </div>
