@@ -108,3 +108,15 @@ if not GROQ_API_KEY:
     print("⚠️  ADVERTENCIA: No se encontró GROQ_API_KEY. El análisis narrativo usará plantillas genéricas.")
 else:
     print(f"✅ IA Activada: Usando Groq con modelo {GROQ_MODEL}")
+
+# ------------------------------
+# Email de soporte
+# ------------------------------
+# Correo donde llegan los formularios de /help.
+# - PRIORIDAD: SUPPORT_EMAIL en el .env
+# - Si no existe, se usa MAIL_FROM si está definido en el entorno
+# - Si tampoco, cae en un correo genérico
+SUPPORT_EMAIL: str = os.getenv(
+    "SUPPORT_EMAIL",
+    os.getenv("MAIL_FROM", "soporte@cleandata.ai"),
+)

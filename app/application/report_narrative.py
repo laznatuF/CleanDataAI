@@ -48,7 +48,7 @@ def build_narrative_report(
 
     # 3. Construir HTML (Conclusión al FINAL)
     # Nota: El bloque <div class="executive-summary"> ahora está después del loop
-    html_content = f"""<!doctype html>
+        html_content = f"""<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8" />
@@ -81,10 +81,24 @@ def build_narrative_report(
   .chart-panel {{ height: 350px; border: 1px solid #e2e8f0; border-radius: 4px; }}
   
   .footer {{ text-align: center; font-size: 0.8rem; color: #94a3b8; margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 20px; }}
+
+  /* Botón solo en pantalla, escondido al imprimir */
+  .no-print {{ display: block; }}
+  @media print {{
+      .no-print {{ display: none !important; }}
+      body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+  }}
 </style>
 </head>
 <body>
   <div class="container">
+    <!-- Botón esquina superior derecha -->
+    <div class="no-print" style="display:flex; justify-content:flex-end; margin-bottom: 10px;">
+      <button onclick="window.print()" style="background-color:#3b82f6; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">
+        🖨️ Descargar PDF
+      </button>
+    </div>
+
     <h1>Reporte Narrativo de Datos</h1>
     <p class="subtitle">Análisis detallado generado por Inteligencia Artificial</p>
     
@@ -102,7 +116,8 @@ def build_narrative_report(
     ''' for item in report_items])}
     
     <!-- CONCLUSIÓN AL FINAL -->
-    {f'<div class="executive-summary"><h2>🔎 Conclusión Ejecutiva y Recomendaciones</h2>{conclusion}</div>' if conclusion else ''}
+    {f'<div class="executive-summary"><h2>🔎 Conclusiones</h2>{conclusion}</div>' if conclusion else ''}
+
     
     <div class="footer">
         Generado con Llama 3.3 AI el {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}
@@ -118,13 +133,32 @@ def build_narrative_report(
         plot_bgcolor: 'rgba(0,0,0,0)'
     }};
     
-    for(const item of ITEMS) {{
+    for (const item of ITEMS) {{
         const el = document.getElementById('plot_' + item.id);
-        if(el && item.plot_data) {{
+        if (el && item.plot_data) {{
             const layout = Object.assign({{}}, layoutBase, item.plot_data.layout || {{}});
-            Plotly.newPlot(el, item.plot_data.data, layout, {{responsive: true, displayModeBar: false}});
+            Plotly.newPlot(el, item.plot_data.data, layout, {{ responsive: true, displayModeBar: false }});
         }}
     }}
+  </script>
+
+  <!-- Auto-print cuando venimos con ?autoPrint=1 -->
+  <script>
+    (function () {{
+      var params = new URLSearchParams(window.location.search || "");
+      if (params.get("autoPrint") === "1") {{
+        window.addEventListener("load", function () {{
+          setTimeout(function () {{
+            try {{
+              window.focus();
+              window.print();
+            }} catch (e) {{
+              console.warn("No se pudo lanzar print automáticamente:", e);
+            }}
+          }}, 500);
+        }});
+      }}
+    }})();
   </script>
 </body>
 </html>"""

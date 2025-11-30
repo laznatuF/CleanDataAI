@@ -10,7 +10,6 @@ from typing import Dict, Any
 import shutil
 
 import pandas as pd
-import numpy as np
 from os.path import relpath
 
 from app.infrastructure.files import (
@@ -27,11 +26,10 @@ from app.application.cleaning import clean_dataframe
 from app.application.dashboard import generate_dashboard_html
 from app.application.report_full import build_full_report
 from app.application.outliers import apply_isolation_forest
-from app.application.rules import load_rules_for_process, describe_rules
-from app.application.pdf import build_pdf_from_template
+from app.application.rules import load_rules_for_process
 from app.application.semantics import infer_semantics
 
-# [CORREGIDO] Import desde report_narrative.py
+# Importación robusta de report_narrative
 try:
     from app.application.report_narrative import build_narrative_report
 except ImportError as e:
@@ -81,9 +79,6 @@ def now_iso() -> str:
 
 
 def _safe_float(x: Any, default: float = 0.0) -> float:
-    """
-    Convierte a float sin explotar si x es NaT, None, NaN, etc.
-    """
     try:
         if x is None:
             return default
@@ -91,7 +86,6 @@ def _safe_float(x: Any, default: float = 0.0) -> float:
             if pd.isna(x):
                 return default
         except Exception:
-            # pd.isna a veces devuelve array en tipos raros; lo ignoramos
             pass
         return float(x)
     except Exception:
@@ -99,9 +93,6 @@ def _safe_float(x: Any, default: float = 0.0) -> float:
 
 
 def _safe_int(x: Any, default: int = 0) -> int:
-    """
-    Convierte a int sin explotar si x es NaT, None, NaN, etc.
-    """
     try:
         if x is None:
             return default
@@ -215,10 +206,6 @@ def _handle_error(proc_id, status, e):
 # ============================================================
 
 def run_ingestion_phase(proc_id: str) -> None:
-    """
-    Ejecuta hasta generar el CSV limpio y Perfilado.
-    Al final, cambia el status a 'waiting_dashboard' y PAUSA.
-    """
     append_history(proc_id, {"type": "phase_1_started"})
     status = read_status(proc_id)
     status["status"] = "running"
@@ -226,7 +213,6 @@ def run_ingestion_phase(proc_id: str) -> None:
     _write(proc_id, status)
 
     try:
-        # Carpeta de artefactos (la usaremos desde el inicio)
         artifacts = RUNS_DIR / proc_id / "artifacts"
 
         # 1) Ingesta
@@ -234,22 +220,20 @@ def run_ingestion_phase(proc_id: str) -> None:
             uploaded = RUNS_DIR / proc_id / "input" / status["filename"]
             df = read_dataframe(uploaded)
 
-            # Métricas básicas
             status["metrics"].update(
                 {"rows": int(df.shape[0]), "cols": int(df.shape[1])}
             )
 
-            # Guardamos una copia del dataset original como CSV
+            # Guardamos una copia CSV estándar
             try:
                 orig_csv = artifacts / "dataset_original.csv"
                 df.to_csv(orig_csv, index=False, encoding="utf-8")
                 status.setdefault("artifacts", {})
                 status["artifacts"]["dataset_original.csv"] = _rel_to_base(orig_csv)
             except Exception:
-                # si falla, no rompemos la ingesta
                 pass
 
-            # Copiamos el archivo bruto al directorio de artifacts
+            # Guardamos el archivo original con su extensión
             try:
                 orig_copy = artifacts / f"input_original{uploaded.suffix.lower()}"
                 if not orig_copy.exists():
@@ -262,31 +246,34 @@ def run_ingestion_phase(proc_id: str) -> None:
             status["progress"] = 20
             _write(proc_id, status)
 
-        # 2) Normalización de fechas
+        # 2) Fechas
         with _stage(proc_id, "Fechas"):
             inferred_dates = normalize_dates_in_df(df, min_success_ratio=0.5)
 
-        # 3) Inferencia de tipos (Semantics)
+        # 3) Semántica (schema.roles)
         with _stage(proc_id, "InferenciaTipos"):
             semantic_schema = infer_semantics(df)
             roles = semantic_schema.roles
+            # Forzamos las columnas que detectamos como fecha
             for col in inferred_dates.keys():
                 roles[col] = "fecha"
             status["metrics"]["inferred_types"] = roles
             status["progress"] = 30
             _write(proc_id, status)
 
-        # 4) Perfilado (HTML + PDF)
+        # 4) Perfilado
         with _stage(proc_id, "Perfilado"):
             try:
                 profile_path = generate_profile_html(
                     df, artifacts, TEMPLATES_DIR, roles=roles
                 )
             except TypeError:
+                # Versión antigua de generate_profile_html sin roles
                 profile_path = generate_profile_html(df, artifacts, TEMPLATES_DIR)
 
             status["artifacts"]["reporte_perfilado.html"] = _rel_to_base(profile_path)
 
+            # CSV + PDF a partir del HTML de perfilado
             try:
                 p_csv = artifacts / "reporte_perfilado.csv"
                 p_pdf = artifacts / "reporte_perfilado.pdf"
@@ -294,8 +281,8 @@ def run_ingestion_phase(proc_id: str) -> None:
                 build_profile_pdf_from_html(profile_path, p_pdf)
                 status["artifacts"]["reporte_perfilado.csv"] = _rel_to_base(p_csv)
                 status["artifacts"]["reporte_perfilado.pdf"] = _rel_to_base(p_pdf)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"⚠️ Error generando PDF perfilado: {e}")
 
             for s in status["steps"]:
                 if s["name"] == "Perfilado":
@@ -303,7 +290,7 @@ def run_ingestion_phase(proc_id: str) -> None:
             status["progress"] = 50
             _write(proc_id, status)
 
-        # 5) Limpieza y Outliers
+        # 5) Limpieza
         status["current_step"] = "Limpieza"
         _write(proc_id, status)
 
@@ -319,7 +306,6 @@ def run_ingestion_phase(proc_id: str) -> None:
                     random_state=OUTLIER_RANDOM_STATE,
                 )
 
-            # Incrustamos el resumen de outliers dentro de clean_summary
             if isinstance(clean_summary, dict):
                 tmp = dict(clean_summary)
                 tmp["outliers"] = out_summary
@@ -328,9 +314,7 @@ def run_ingestion_phase(proc_id: str) -> None:
             cleaned_csv = artifacts / "dataset_limpio.csv"
             df_clean.to_csv(cleaned_csv, index=False, encoding="utf-8")
 
-            # --- Normalizamos valores del resumen de outliers SIN float()/int directos ---
             out_summary = out_summary or {}
-
             out_count = _safe_int(out_summary.get("outliers", 0), default=0)
             out_ratio = _safe_float(out_summary.get("ratio", 0.0), default=0.0)
             out_cont = _safe_float(out_summary.get("contamination", 0.0), default=0.0)
@@ -353,9 +337,8 @@ def run_ingestion_phase(proc_id: str) -> None:
                 if s["name"] == "Limpieza":
                     s["status"] = "ok"
 
-            # Punto de corte
             status["progress"] = 60
-            status["status"] = "waiting_dashboard"  # Estado clave para el frontend
+            status["status"] = "waiting_dashboard"
             status["current_step"] = "Listo para Dashboard"
             _write(proc_id, status)
             append_history(proc_id, {"type": "phase_1_completed"})
@@ -371,7 +354,8 @@ def run_ingestion_phase(proc_id: str) -> None:
 def run_dashboard_phase(proc_id: str) -> None:
     """
     Se llama SOLO cuando el usuario aprieta el botón.
-    Lee el CSV limpio y genera los gráficos.
+    Lee el CSV limpio y genera los gráficos y el reporte narrativo.
+    (YA NO genera reporte_integrado.pdf para evitar conflictos con antivirus).
     """
     append_history(proc_id, {"type": "phase_2_started"})
     status = read_status(proc_id)
@@ -387,12 +371,10 @@ def run_dashboard_phase(proc_id: str) -> None:
         if not clean_path.exists():
             raise FileNotFoundError("No existe CSV limpio. Ejecuta fase 1.")
 
-        # Cargar dataset
         df_clean = pd.read_csv(clean_path)
-        # Recuperar roles inferidos anteriormente
         roles = status["metrics"].get("inferred_types", {}) or {}
 
-        # 6) Dashboard (Inteligente con Autospec)
+        # 6) Dashboard
         with _stage(proc_id, "Dashboard"):
             spec = auto_dashboard_spec(
                 df_clean,
@@ -410,7 +392,7 @@ def run_dashboard_phase(proc_id: str) -> None:
                 auto_spec_path
             )
 
-            # Reporte Narrativo
+            # Reporte Narrativo (IA) - no es crítico: si falla, seguimos
             if build_narrative_report:
                 try:
                     narrative_path = build_narrative_report(
@@ -420,7 +402,6 @@ def run_dashboard_phase(proc_id: str) -> None:
                         narrative_path
                     )
                 except Exception as e:
-                    # Si falla el storytelling, no rompemos el dashboard principal
                     print(f"[Warning] Falló el reporte narrativo: {e}")
                     append_history(
                         proc_id,
@@ -429,11 +410,6 @@ def run_dashboard_phase(proc_id: str) -> None:
                             "message": f"Storytelling fallido: {str(e)}",
                         },
                     )
-            else:
-                # Mensaje de debug en caso de que la importación inicial haya fallado
-                print(
-                    "[Warning] build_narrative_report es None. Verifica la importación de report_narrative.py"
-                )
 
             dash_path = generate_dashboard_html(
                 df_clean,
@@ -449,9 +425,10 @@ def run_dashboard_phase(proc_id: str) -> None:
             status["progress"] = 90
             _write(proc_id, status)
 
-        # 7) Reporte Integrado
+        # 7) Reporte Integrado SOLO HTML (no PDF)
         status["current_step"] = "Reporte"
         _write(proc_id, status)
+
         with _stage(proc_id, "Reporte"):
             missing_overall = df_clean.isna().mean().mean() * 100.0
             missing_by_col = df_clean.isna().mean().mul(100).round(2).to_dict()
@@ -475,61 +452,28 @@ def run_dashboard_phase(proc_id: str) -> None:
                 "dataset_original.csv": status["artifacts"].get(
                     "dataset_original.csv", ""
                 ),
-                "input_original": status["artifacts"].get(
-                    "input_original", ""
-                ),
+                "input_original": status["artifacts"].get("input_original", ""),
             }
 
             report_path = artifacts / "reporte_integrado.html"
             clean_summary = status["metrics"].get("clean_summary", {}) or {}
             build_full_report(clean_summary, quality, links, report_path)
-            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(
-                report_path
-            )
+            status["artifacts"]["reporte_integrado.html"] = _rel_to_base(report_path)
 
             for s in status["steps"]:
                 if s["name"] == "Reporte":
                     s["status"] = "ok"
-
-            # PDF Opcional
-            if os.getenv("GENERATE_PDF", "0") == "1":
-                try:
-                    pdf_path = artifacts / "reporte_integrado.pdf"
-                    ctx = {
-                        "title": "Reporte Final",
-                        "generated_at": now_iso(),
-                        "process_id": proc_id,
-                        "clean_summary": clean_summary,
-                        "quality": quality,
-                        "links": links,
-                        "outliers": {
-                            "total": int(quality["rows"]),
-                            "outliers": status["metrics"].get(
-                                "outliers_count", 0
-                            ),
-                        },
-                    }
-                    build_pdf_from_template(
-                        "report.j2.html", pdf_path, ctx
-                    )
-                    status["artifacts"]["reporte_integrado.pdf"] = _rel_to_base(
-                        pdf_path
-                    )
-                except Exception:
-                    pass
 
         # 8) Final
         status["status"] = "completed"
         status["current_step"] = "Finalizado"
         status["progress"] = 100
         _write(proc_id, status)
-        append_history(
-            proc_id, {"type": "process_completed", "status": "completed"}
-        )
+        append_history(proc_id, {"type": "process_completed", "status": "completed"})
 
     except Exception as e:
         _handle_error(proc_id, status, e)
 
 
-# Alias para compatibilidad si algo llama a process_pipeline
+# Alias para compatibilidad con código viejo
 process_pipeline = run_ingestion_phase
