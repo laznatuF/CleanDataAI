@@ -15,7 +15,9 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     money = None
     total_candidates: List[str] = []
     for c_lower, orig in cols.items():
-        if "total_clp" in c_lower and not any(skip in c_lower for skip in ["moneda", "currency", "divisa"]):
+        if "total_clp" in c_lower and not any(
+            skip in c_lower for skip in ["moneda", "currency", "divisa"]
+        ):
             if is_numeric(orig) and df[orig].notna().any():
                 total_candidates.append(orig)
 
@@ -23,7 +25,7 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         money = total_candidates[0]
     else:
         keywords_money = [
-            "monto", "importe", "total", "precio", "valor", "revenue", 
+            "monto", "importe", "total", "precio", "valor", "revenue",
             "salary", "sueldo", "remuneracion", "ingreso", "costo", "pay"
         ]
         money_candidates: List[str] = []
@@ -33,20 +35,46 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
                     if is_numeric(orig) and df[orig].notna().any():
                         money_candidates.append(orig)
                     else:
-                        clean_ver = [x for x in df.columns if x.startswith(orig) and is_numeric(x)]
-                        if clean_ver: money_candidates.append(clean_ver[0])
+                        # Buscar versiones limpias de esa columna que sí sean numéricas
+                        clean_ver = [
+                            x for x in df.columns
+                            if x.startswith(orig) and is_numeric(x)
+                        ]
+                        if clean_ver:
+                            money_candidates.append(clean_ver[0])
         if money_candidates:
             money = money_candidates[0]
 
     # --- B. Detección de Otras Dimensiones ---
-    date = next((cols[c] for c in cols if any(k in c for k in ["fecha", "date", "created", "time", "dob"])), None)
-    cat = next((cols[c] for c in cols if any(k in c for k in ["cat", "tipo", "clase", "segmento"])), None)
-    prod = next((cols[c] for c in cols if any(k in c for k in ["prod", "sku", "articulo", "item"])), None)
-    city = next((cols[c] for c in cols if any(k in c for k in ["ciudad", "city", "region", "comuna", "provincia", "state", "ubicacion"])), None)
-    client = next((cols[c] for c in cols if any(k in c for k in ["cli", "customer", "emp", "empleado", "nombre", "name"])), None)
-    origin = next((cols[c] for c in cols if any(k in c for k in ["origen", "source", "canal"])), None)
-    qty = next((cols[c] for c in cols if any(k in c for k in ["cant", "qty", "unidades"])), None)
-    
+    date = next(
+        (cols[c] for c in cols if any(k in c for k in ["fecha", "date", "created", "time", "dob"])),
+        None,
+    )
+    cat = next(
+        (cols[c] for c in cols if any(k in c for k in ["cat", "tipo", "clase", "segmento"])),
+        None,
+    )
+    prod = next(
+        (cols[c] for c in cols if any(k in c for k in ["prod", "sku", "articulo", "item"])),
+        None,
+    )
+    city = next(
+        (cols[c] for c in cols if any(k in c for k in ["ciudad", "city", "region", "comuna", "provincia", "state", "ubicacion"])),
+        None,
+    )
+    client = next(
+        (cols[c] for c in cols if any(k in c for k in ["cli", "customer", "emp", "empleado", "nombre", "name"])),
+        None,
+    )
+    origin = next(
+        (cols[c] for c in cols if any(k in c for k in ["origen", "source", "canal"])),
+        None,
+    )
+    qty = next(
+        (cols[c] for c in cols if any(k in c for k in ["cant", "qty", "unidades"])),
+        None,
+    )
+
     metric = money or "__row__"
     agg = "sum" if money else "count"
 
@@ -75,8 +103,8 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             },
         })
         d1.append("d1_trend")
-    
-    col_pie = cat or origin or city 
+
+    col_pie = cat or origin or city
     if col_pie:
         charts.append({
             "id": "d1_pie",
@@ -88,7 +116,7 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             },
         })
         d1.append("d1_pie")
-        
+
     if origin:
         charts.append({
             "id": "d1_origin",
@@ -103,9 +131,9 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
 
     dashboards.append({"id": "exec", "title": "1. Resumen Ejecutivo", "charts": d1})
 
-    # --- DASH 2: ANÁLISIS DETALLADO (TU REQUERIMIENTO) ---
+    # --- DASH 2: ANÁLISIS DETALLADO ---
     d2: List[str] = []
-    
+
     # 1. Mapa de Calor Ciudades (Izquierda)
     if city and date and money:
         charts.append({
@@ -113,14 +141,14 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             "type": "heatmap_pivot",
             "title": f"Mapa de Calor: {city} vs Meses",
             "encoding": {
-                "x": {"field": date}, 
+                "x": {"field": date},
                 "y": {"field": city},
-                "value": {"field": money}
-            }
+                "value": {"field": money},
+            },
         })
         d2.append("d4_city_matrix")
 
-    # 2. Histograma Morado (Derecha - Al lado del mapa)
+    # 2. Histograma (Derecha)
     if money:
         charts.append({
             "id": "d2_hist",
@@ -130,7 +158,7 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
         })
         d2.append("d2_hist")
 
-    # 3. Calendario Naranjo (Abajo - Full Width)
+    # 3. Calendario (Abajo - Full Width)
     if date:
         charts.append({
             "id": "d2_cal",
@@ -142,13 +170,13 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             },
         })
         d2.append("d2_cal")
-        
+
     dashboards.append({"id": "adv", "title": "2. Análisis Detallado", "charts": d2})
 
-    # --- DASH 3: PRODUCTOS (TU REQUERIMIENTO) ---
+    # --- DASH 3: PRODUCTOS ---
     d3: List[str] = []
-    
-    # 1. Treemap (Solo/Full Width para leer todo el texto)
+
+    # 1. Treemap (Full Width)
     if cat and prod:
         charts.append({
             "id": "d3_tree",
@@ -161,7 +189,7 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
             },
         })
         d3.append("d3_tree")
-    
+
     # 2. Scatter (Abajo)
     if money and qty:
         charts.append({
@@ -197,8 +225,20 @@ def auto_dashboard_spec(df: pd.DataFrame, **kwargs) -> Dict[str, Any]:
     if d4:
         dashboards.append({"id": "rank", "title": "4. Rankings", "charts": d4})
 
+    # --- SCHEMA para el reporte narrativo / fingerprint ---
+    schema = {
+        "primary_date": date,
+        "primary_metric": money if money else None,
+        "dims": [c for c in [city, origin, cat, prod, client] if c],
+    }
+
+    # Puedes opcionalmente pasar source_name/filename via kwargs
+    source_name = kwargs.get("source_name") or kwargs.get("filename")
+
     return {
         "dashboards": dashboards,
         "charts": charts,
         "kpis": all_kpis,
+        "schema": schema,
+        "source_name": source_name,
     }

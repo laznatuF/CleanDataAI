@@ -12,6 +12,7 @@ try:
 except ImportError:
     Groq = None
 
+
 # ==========================================
 # 1. CLIENTE GROQ (Lazy Load)
 # ==========================================
@@ -19,12 +20,13 @@ def _get_groq_client():
     if not Groq:
         print("⚠️ Error: Librería 'groq' no instalada. Ejecuta 'pip install groq'.")
         return None
-    
+
     if not GROQ_API_KEY:
         print("⚠️ Error: GROQ_API_KEY no encontrada en variables de entorno (.env).")
         return None
-        
+
     return Groq(api_key=GROQ_API_KEY)
+
 
 # ==========================================
 # HELPERS NUMÉRICOS
@@ -39,9 +41,11 @@ def _fmt_number(value: float, decimals: int = 0) -> str:
         return "-"
     return f"{value:,.{decimals}f}"
 
+
 def _safe_numeric(series: pd.Series) -> pd.Series:
     """Convierte de forma segura a numérico."""
     return pd.to_numeric(series, errors="coerce")
+
 
 # ==========================================
 # 2. CONTEXTO GLOBAL DEL DATASET
@@ -59,7 +63,7 @@ def get_dataset_fingerprint(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
         val: str | float = "-"
         col = k.get("col")
         op = k.get("op")
-        
+
         if op == "count_rows":
             val = _fmt_number(len(df))
         elif col and col in df.columns:
@@ -77,7 +81,7 @@ def get_dataset_fingerprint(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
     date_col: Optional[str] = schema.get("primary_date")
     metric_col: Optional[str] = schema.get("primary_metric")
     trend_text = "No se detectó serie temporal clara."
-    
+
     if date_col and date_col in df.columns:
         try:
             cols = [date_col]
@@ -87,13 +91,13 @@ def get_dataset_fingerprint(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
 
             df_t[date_col] = pd.to_datetime(df_t[date_col], errors="coerce")
             df_t = df_t.dropna(subset=[date_col]).sort_values(date_col)
-            
+
             if not df_t.empty:
                 start = df_t[date_col].iloc[0]
                 end = df_t[date_col].iloc[-1]
                 duration = (end - start).days
                 trend_text = f"Periodo analizado: del {start.date()} al {end.date()} ({duration} días)."
-                
+
                 if metric_col and metric_col in df_t.columns:
                     s_num = _safe_numeric(df_t[metric_col])
                     v_start = s_num.head(3).mean()
@@ -138,6 +142,7 @@ def get_dataset_fingerprint(df: pd.DataFrame, spec: Dict[str, Any]) -> str:
 
     return "\n".join(parts)
 
+
 # ==========================================
 # 3. PREPARACIÓN LOCAL DEL GRÁFICO (MATEMÁTICA EXACTA)
 # ==========================================
@@ -146,7 +151,7 @@ def _summarize_categorical_distribution(
     series: pd.Series,
     values: Optional[pd.Series] = None,
     max_items: int = 5,
-    value_label: str = "valor"
+    value_label: str = "valor",
 ) -> str:
     """
     Calcula tabla de categorías + participación porcentual.
@@ -160,12 +165,12 @@ def _summarize_categorical_distribution(
     else:
         grouped = series.value_counts(dropna=False)
         metric_desc = "por frecuencia de registros"
-    
+
     grouped = grouped.dropna()
     total = grouped.sum()
     if total <= 0 or grouped.empty:
         return "No se pudo calcular una distribución categórica significativa."
-    
+
     n_cats = len(grouped)
     top = grouped.head(max_items)
     chunks: List[str] = []
@@ -187,10 +192,11 @@ def _summarize_categorical_distribution(
         f"Detalle principales categorías: " + "; ".join(chunks)
     )
 
+
 def _summarize_line_series(
     df: pd.DataFrame,
     x: str,
-    y: Optional[str]
+    y: Optional[str],
 ) -> str:
     """Resumen numérico de una serie temporal."""
     if x not in df.columns:
@@ -240,6 +246,7 @@ def _summarize_line_series(
         f"promedio: {_fmt_number(avg_val, 2)}."
     )
 
+
 def _summarize_numeric_distribution(series: pd.Series, col_name: str) -> str:
     """Resumen estadístico compacto para histogramas."""
     s = _safe_numeric(series).dropna()
@@ -261,6 +268,7 @@ def _summarize_numeric_distribution(series: pd.Series, col_name: str) -> str:
     ]
     return f"Distribución estadística de '{col_name}'. " + "; ".join(parts)
 
+
 def _summarize_chart_data(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
     """
     Extrae los datos específicos que muestra el gráfico para enviarlos a la IA.
@@ -269,67 +277,170 @@ def _summarize_chart_data(df: pd.DataFrame, chart: Dict[str, Any]) -> str:
     enc = chart.get("encoding", {})
     x = enc.get("x", {}).get("field")
     y = enc.get("y", {}).get("field")
-    # A veces 'value' se usa en lugar de 'y' (ej. Pie charts)
+    # A veces 'value' se usa en lugar de 'y' (ej. Pie / Treemap / Heatmap)
     val_col = y or enc.get("value", {}).get("field")
     title = chart.get("title", "Gráfico")
-    
-    if not x:
+
+    if not x and chart.get("type") not in ["pie", "treemap", "heatmap_pivot", "calendar"]:
         return f"Gráfico '{title}' sin ejes de datos claros."
-    if x not in df.columns:
-        return f"Columna '{x}' no encontrada en el dataset."
 
     chart_type = chart.get("type", "generic")
 
     try:
         if chart_type in ["bar", "pie", "treemap"]:
+            # Para pie / treemap solemos tener category + value
+            cat_field = enc.get("category", {}).get("field", x)
+            if cat_field not in df.columns:
+                return f"Columna categórica '{cat_field}' no encontrada en el dataset."
             if val_col and val_col in df.columns:
                 return _summarize_categorical_distribution(
-                    df[x],
+                    df[cat_field],
                     df[val_col],
                     max_items=5,
                     value_label=val_col,
                 )
             # Conteo de frecuencia si no hay métrica numérica
             return _summarize_categorical_distribution(
-                df[x],
+                df[cat_field],
                 values=None,
                 max_items=5,
                 value_label="frecuencia",
             )
 
         elif chart_type == "line":
+            if not x:
+                return f"Gráfico de línea '{title}' sin eje X."
             return _summarize_line_series(df, x, val_col)
 
         elif chart_type == "histogram":
-            if x in df.columns:
+            if x and x in df.columns:
                 return _summarize_numeric_distribution(df[x], x)
             return f"Columna '{x}' no encontrada para histograma."
 
-        else:
-            # Fallback genérico: tratamos como categórico
-            if val_col and val_col in df.columns:
-                return _summarize_categorical_distribution(
-                    df[x],
-                    df[val_col],
-                    max_items=5,
-                    value_label=val_col,
-                )
-            return _summarize_categorical_distribution(
-                df[x],
-                None,
-                max_items=5,
-                value_label="frecuencia",
+        elif chart_type == "heatmap_pivot":
+            # Mapa de calor ciudad vs fecha/mes
+            x_field = enc.get("x", {}).get("field")
+            y_field = enc.get("y", {}).get("field")
+            v_field = val_col
+            if not (x_field and y_field and v_field):
+                return "Heatmap sin ejes o valor claros."
+            if not (x_field in df.columns and y_field in df.columns and v_field in df.columns):
+                return "Columnas del heatmap no encontradas en el dataset."
+
+            # Solo un pequeño resumen: cuántas combinaciones, top celda, etc.
+            tmp = df[[x_field, y_field, v_field]].copy()
+            tmp[v_field] = _safe_numeric(tmp[v_field])
+            tmp = tmp.dropna(subset=[v_field])
+            if tmp.empty:
+                return "No hay datos válidos para el mapa de calor."
+
+            pivot_sum = tmp.pivot_table(
+                index=y_field,
+                columns=x_field,
+                values=v_field,
+                aggfunc="sum",
             )
+            total = pivot_sum.to_numpy().sum()
+            if total <= 0:
+                return "Mapa de calor sin valores positivos significativos."
+
+            # Celda máxima
+            max_val = pivot_sum.max().max()
+            # Encontrar coordenadas de esa celda
+            max_pos = pivot_sum.stack().idxmax()
+            max_y, max_x = max_pos
+            return (
+                f"Mapa de calor de '{y_field}' vs '{x_field}' sobre '{v_field}'. "
+                f"Total agregado: {_fmt_number(total)}. "
+                f"Mayor concentración en ({max_y}, {max_x}) con {_fmt_number(max_val)}."
+            )
+
+        elif chart_type == "calendar":
+            date_field = enc.get("date", {}).get("field")
+            value_field = enc.get("value", {}).get("field", val_col)
+            if not date_field or date_field not in df.columns:
+                return "Calendario sin columna de fecha válida."
+            tmp = df[[date_field]].copy()
+            tmp[date_field] = pd.to_datetime(tmp[date_field], errors="coerce")
+            tmp = tmp.dropna(subset=[date_field])
+            if value_field and value_field in df.columns:
+                tmp[value_field] = _safe_numeric(df[value_field])
+                tmp = tmp.dropna(subset=[value_field])
+            if tmp.empty:
+                return "No hay datos válidos para el calendario."
+
+            start = tmp[date_field].min().date()
+            end = tmp[date_field].max().date()
+            if value_field and value_field in tmp.columns:
+                total = tmp[value_field].sum()
+                return (
+                    f"Calendario diario desde {start} hasta {end}. "
+                    f"Total acumulado de '{value_field}': {_fmt_number(total)}."
+                )
+            else:
+                count_days = tmp[date_field].nunique()
+                total_rows = len(tmp)
+                return (
+                    f"Calendario diario desde {start} hasta {end}. "
+                    f"{_fmt_number(count_days)} días con datos y "
+                    f"{_fmt_number(total_rows)} registros."
+                )
+
+        elif chart_type == "scatter":
+            x_field = enc.get("x", {}).get("field")
+            y_field = enc.get("y", {}).get("field")
+            if not x_field or not y_field:
+                return "Gráfico de dispersión sin ejes claros."
+            if not (x_field in df.columns and y_field in df.columns):
+                return "Columnas del scatter no encontradas en el dataset."
+
+            tmp = df[[x_field, y_field]].copy()
+            tmp[x_field] = _safe_numeric(tmp[x_field])
+            tmp[y_field] = _safe_numeric(tmp[y_field])
+            tmp = tmp.dropna()
+            if tmp.empty:
+                return "No hay datos numéricos válidos para el scatter."
+
+            corr = tmp[x_field].corr(tmp[y_field])
+            return (
+                f"Dispersión entre '{x_field}' y '{y_field}'. "
+                f"Registros válidos: {_fmt_number(len(tmp))}. "
+                f"Correlación aproximada: {_fmt_number(corr, 2)}."
+            )
+
+        # Fallback genérico: tratamos como categórico
+        cat_field = x if x in df.columns else None
+        if not cat_field:
+            return f"Gráfico '{title}' sin columnas reconocibles."
+        if val_col and val_col in df.columns:
+            return _summarize_categorical_distribution(
+                df[cat_field],
+                df[val_col],
+                max_items=5,
+                value_label=val_col,
+            )
+        return _summarize_categorical_distribution(
+            df[cat_field],
+            None,
+            max_items=5,
+            value_label="frecuencia",
+        )
+
     except Exception as e:
         return f"No se pudieron extraer datos detallados del gráfico '{title}': {e}"
+
 
 # ==========================================
 # 4. CEREBRO IA (Consultor Senior)
 # ==========================================
 
-def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dict[str, Any] = None) -> str:
+def generate_chart_story(
+    df: pd.DataFrame,
+    chart: Dict[str, Any],
+    full_spec: Optional[Dict[str, Any]] = None,
+) -> str:
     client = _get_groq_client()
-    
+
     # Check de fallo inicial
     if not client:
         return (
@@ -338,10 +449,14 @@ def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dic
         )
 
     # Preparar Prompt
-    global_context = get_dataset_fingerprint(df, full_spec) if full_spec else "Sin contexto global disponible."
+    global_context = (
+        get_dataset_fingerprint(df, full_spec)
+        if full_spec is not None
+        else "Sin contexto global disponible."
+    )
     local_data = _summarize_chart_data(df, chart)
-    title = chart.get('title', 'Gráfico')
-    
+    title = chart.get("title", "Gráfico")
+
     system_prompt = (
         "Actúa como un Consultor de Negocios Senior (Nivel McKinsey/BCG). Estás escribiendo un reporte ejecutivo.\n"
         "Recibirás:\n"
@@ -354,7 +469,7 @@ def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dic
         "- Conecta el hallazgo local con el contexto global si es posible.\n"
         "- Usa un tono profesional, directo y perspicaz en Español neutro."
     )
-    
+
     user_msg = (
         f"--- CONTEXTO GLOBAL ---\n{global_context}\n\n"
         f"--- GRÁFICO A ANALIZAR ---\n"
@@ -367,14 +482,14 @@ def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dic
         resp = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg}
+                {"role": "user", "content": user_msg},
             ],
             model=GROQ_MODEL,
             temperature=0.3,  # Bajo para ser preciso y no alucinar
-            max_tokens=300
+            max_tokens=300,
         )
         return resp.choices[0].message.content
-        
+
     except Exception as e:
         error_msg = str(e)
         print(f"❌ Error Groq AI: {error_msg}")
@@ -383,6 +498,7 @@ def generate_chart_story(df: pd.DataFrame, chart: Dict[str, Any], full_spec: Dic
             f"Análisis visual de: <b>{title}</b>.<br>"
             f"<span style='color:red; font-size:0.8em; background:#fee;'>Error de IA: {error_msg}</span>"
         )
+
 
 # ==========================================
 # 5. CONCLUSIÓN FINAL (Para el final del reporte)
@@ -393,7 +509,7 @@ def generate_executive_conclusion(df: pd.DataFrame, spec: Dict[str, Any]) -> str
     client = _get_groq_client()
     if not client:
         return ""
-    
+
     context = get_dataset_fingerprint(df, spec)
     prompt = (
         "Basado en este contexto global del negocio, escribe una 'Conclusión Ejecutiva' de 1 párrafo.\n"
@@ -404,7 +520,7 @@ def generate_executive_conclusion(df: pd.DataFrame, spec: Dict[str, Any]) -> str
         resp = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": "Eres un experto estratega de datos."},
-                {"role": "user", "content": f"{context}\n\n{prompt}"}
+                {"role": "user", "content": f"{context}\n\n{prompt}"},
             ],
             model=GROQ_MODEL,
             temperature=0.4,
