@@ -1,4 +1,4 @@
-// src/Router.tsx
+// src/api/Router.tsx
 import { createBrowserRouter, redirect } from "react-router-dom";
 import Home from "./pages/Home";
 import Status from "./pages/Status";
@@ -11,6 +11,8 @@ import PlansPage from "./pages/Plans";
 import CreateAccount from "./pages/CreateAccount";
 import CsvPreview from "./pages/CsvPreview";
 import ProfilePreview from "./pages/ProfilePreview";
+import AboutPage from "./pages/about";
+import HelpPage from "./pages/help";     
 
 
 
@@ -40,14 +42,17 @@ export const router = createBrowserRouter([
   // Planes
   { path: "/planes", element: <PlansPage /> }, // ⬅️ ya no redirige
 
+  // Paginas Informativas
+  { path: "/about", element: <AboutPage /> },
+  { path: "/help", element: <HelpPage /> },
+
   // Rutas sin parámetro → redirigen al home
   { path: "/status", loader: () => redirect("/") },
   { path: "/results", loader: () => redirect("/") },
 
   // Enlaces aún no implementados
   { path: "/mis-procesos", loader: () => redirect("/") },
-  { path: "/help", loader: () => redirect("/") },
-  { path: "/about", loader: () => redirect("/") },
+
 
   // Fallback
   { path: "*", element: <Home /> },

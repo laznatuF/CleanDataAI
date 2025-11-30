@@ -20,6 +20,7 @@ from app.api.auth_pwless import router as auth_router      # /api/auth/*
 from app.api.artifacts import router as artifacts_router   # /artifacts* (definido en router)
 from app.api.history import router as history_router       # /history*   (definido en router)
 from app.api.private_demo import router as private_demo_router
+from app.api.help import router as help_router             # 👈 NUEVO
 
 app = FastAPI(title="CleanDataAI")
 
@@ -39,8 +40,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 def _now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
+
 
 # ---------- Meta ----------
 @app.get("/", tags=["meta"])
@@ -52,9 +55,11 @@ def root():
         "message": "Bienvenido a CleanDataAI",
     }
 
+
 @app.get("/health", tags=["meta"])
 def health():
     return {"ok": True, "time": _now_iso()}
+
 
 @app.get("/api/", tags=["meta"])
 def api_root():
@@ -66,9 +71,11 @@ def api_root():
         "base": "/api",
     }
 
+
 @app.get("/api/health", tags=["meta"])
 def api_health_alias():
     return {"ok": True, "time": _now_iso()}
+
 
 # ---------- Estáticos (solo desarrollo) ----------
 # En producción NO expongas /runs; sirve artefactos vía /api/artifacts/*
@@ -89,8 +96,12 @@ app.include_router(history_router,  prefix="/api")  # /api/history/{id}[...]
 
 app.include_router(private_demo_router, prefix="/api")
 
+# Help / soporte (router ya viene con prefix="/api/help")
+app.include_router(help_router)
+
 # Endpoints públicos (solo si los flags lo permiten; útiles en dev/tests)
 if ARTIFACTS_PUBLIC:
     app.include_router(artifacts_router)            # /artifacts/{id}/{name}
 if HISTORY_PUBLIC:
     app.include_router(history_router)              # /history/{id}[...]
+

@@ -1,3 +1,4 @@
+# app/domain/models.py
 from __future__ import annotations
 from pydantic import BaseModel, EmailStr
 from typing import Optional

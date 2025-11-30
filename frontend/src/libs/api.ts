@@ -109,3 +109,19 @@ export const getHistory = (id: string, limit?: number) =>
   http<{ items: any[]; count: number }>(
     `/api/history/${encodeURIComponent(id)}${limit ? `?limit=${limit}` : ""}`
   );
+
+/* ======================== Help / Soporte ======================== */
+
+export type HelpPayload = {
+  name: string;
+  email: string;
+  category: "queja" | "sugerencia" | "comentario" | "ayuda" | string;
+  subject?: string;
+  message: string;
+};
+
+export const sendHelpRequest = (payload: HelpPayload) =>
+  http<{ ok: boolean }>("/api/help", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });

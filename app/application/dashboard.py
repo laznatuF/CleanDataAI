@@ -488,16 +488,38 @@ def generate_dashboard_html(df: pd.DataFrame, artifacts_dir: Path, csv_rel_name:
     </div>
     {sections_html}
   </div>
-  <script>
+    <script>
     const PLOTS = {json.dumps(plots_data, ensure_ascii=False)};
     const base = {{ paper_bgcolor: '#1e293b', plot_bgcolor: '#1e293b', font: {{ color: '#e2e8f0' }} }};
     function render() {{
-      for(const p of PLOTS) {{
-         const el = document.getElementById(p.container);
-         if(el) Plotly.newPlot(el, p.data, Object.assign({{}}, base, p.layout), {{responsive:true}});
+      for (const p of PLOTS) {{
+        const el = document.getElementById(p.container);
+        if (el) {{
+          Plotly.newPlot(el, p.data, Object.assign({{}}, base, p.layout), {{ responsive: true }});
+        }}
       }}
     }}
-    if(window.Plotly) render(); else document.querySelector('script').onload = render;
+    if (window.Plotly) render();
+    else document.querySelector('script').onload = render;
+  </script>
+
+  <!-- Auto-print cuando venimos con ?autoPrint=1 -->
+  <script>
+    (function () {{
+      var params = new URLSearchParams(window.location.search || "");
+      if (params.get("autoPrint") === "1") {{
+        window.addEventListener("load", function () {{
+          setTimeout(function () {{
+            try {{
+              window.focus();
+              window.print();
+            }} catch (e) {{
+              console.warn("No se pudo lanzar print automáticamente:", e);
+            }}
+          }}, 500);
+        }});
+      }}
+    }})();
   </script>
 </body>
 </html>"""
