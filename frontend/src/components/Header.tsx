@@ -315,27 +315,29 @@ export default function Header() {
 
               {/* Iconos de navegación */}
               <div className="flex flex-col items-center gap-3">
-                {menuItems.map((item) => {
-                  const active = isActive(item.href);
-                  const locked = item.locked;
+                {menuItems
+                  .filter((item) => item.href !== "/mis-procesos")
+                  .map((item) => {
+                    const active = isActive(item.href);
+                    const locked = item.locked;
 
-                  return (
-                    <Link
-                      key={item.href}
-                      to={item.href}
-                      className={[
-                        "flex h-9 w-9 items-center justify-center rounded-full border text-slate-600 transition-colors",
-                        locked
-                          ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 pointer-events-none"
-                          : active
-                          ? "border-[#F28C18] bg-[#FFF3E6] text-[#F28C18]"
-                          : "border-slate-200 bg-white hover:bg-slate-50",
-                      ].join(" ")}
-                    >
-                      {iconFor(item.href)}
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        className={[
+                          "flex h-9 w-9 items-center justify-center rounded-full border text-slate-600 transition-colors",
+                          locked
+                            ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 pointer-events-none"
+                            : active
+                            ? "border-[#F28C18] bg-[#FFF3E6] text-[#F28C18]"
+                            : "border-slate-200 bg-white hover:bg-slate-50",
+                        ].join(" ")}
+                      >
+                        {iconFor(item.href)}
+                      </Link>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -437,53 +439,55 @@ export default function Header() {
             </div>
 
             <nav className="mt-2 flex-1 space-y-1 px-2 text-sm">
-              {menuItems.map((item) => {
-                const active = isActive(item.href);
-                const locked = item.locked;
+              {menuItems
+                .filter((item) => item.href !== "/mis-procesos")
+                .map((item) => {
+                  const active = isActive(item.href);
+                  const locked = item.locked;
 
-                const base =
-                  "flex items-center justify-between rounded-md px-3 py-2 transition-colors";
-                const colors = locked
-                  ? "text-slate-400 cursor-not-allowed pointer-events-none bg-slate-50"
-                  : active
-                  ? "bg-[#FFF3E6] text-slate-900"
-                  : "text-slate-700 hover:bg-slate-50";
+                  const base =
+                    "flex items-center justify-between rounded-md px-3 py-2 transition-colors";
+                  const colors = locked
+                    ? "text-slate-400 cursor-not-allowed pointer-events-none bg-slate-50"
+                    : active
+                    ? "bg-[#FFF3E6] text-slate-900"
+                    : "text-slate-700 hover:bg-slate-50";
 
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    onClick={() => !locked && setOpen(false)}
-                    className={`${base} ${colors}`}
-                  >
-                    <span>{item.label}</span>
-                    {locked && (
-                      <span className="ml-2 inline-flex items-center">
-                        {/* icono candado */}
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="h-4 w-4 text-slate-400"
-                          stroke="currentColor"
-                          fill="none"
-                        >
-                          <rect
-                            x="5"
-                            y="10"
-                            width="14"
-                            height="9"
-                            rx="2"
-                            strokeWidth={1.6}
-                          />
-                          <path
-                            d="M9 10V8a3 3 0 0 1 6 0v2"
-                            strokeWidth={1.6}
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => !locked && setOpen(false)}
+                      className={`${base} ${colors}`}
+                    >
+                      <span>{item.label}</span>
+                      {locked && (
+                        <span className="ml-2 inline-flex items-center">
+                          {/* icono candado */}
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="h-4 w-4 text-slate-400"
+                            stroke="currentColor"
+                            fill="none"
+                          >
+                            <rect
+                              x="5"
+                              y="10"
+                              width="14"
+                              height="9"
+                              rx="2"
+                              strokeWidth={1.6}
+                            />
+                            <path
+                              d="M9 10V8a3 3 0 0 1 6 0v2"
+                              strokeWidth={1.6}
+                            />
+                          </svg>
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
             </nav>
 
             {/* zona inferior: sesión */}

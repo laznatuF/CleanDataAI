@@ -95,7 +95,7 @@ export default function StatusPage() {
   // 5. Archivo Original
   const inputRel = data?.artifacts?.["input_original"];
 
-  // --- URLs absolutas ---
+  // --- URLs ---
   const perfilHref = perfilRel ? artifactUrl(perfilRel) : null;
   const perfilCsvHref = perfilCsvRel ? artifactUrl(perfilCsvRel) : null;
   const perfilPdfHref = perfilPdfRel ? artifactUrl(perfilPdfRel) : null;
@@ -115,7 +115,9 @@ export default function StatusPage() {
         <div className="rounded-3xl border border-[#E4DCCB] bg-[#FDFBF6] shadow-sm p-6 md:p-10">
           {/* Encabezado de estado */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-slate-900">Estado del Proceso</h1>
+            <h1 className="text-2xl font-bold text-slate-900">
+              Estado del Proceso
+            </h1>
             <p className="text-sm text-slate-500 font-mono mt-1">ID: {runId}</p>
           </div>
 
@@ -123,12 +125,14 @@ export default function StatusPage() {
           <div className="space-y-2 mb-6">
             {queued && (
               <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-800 flex items-center gap-2">
-                <span className="animate-pulse">⏳</span> El proceso está en cola… empezará en breve.
+                <span className="animate-pulse">⏳</span> El proceso está en
+                cola… empezará en breve.
               </div>
             )}
             {failed && (
               <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-700">
-                ❌ Proceso fallido. {data?.error ? `Detalle: ${data.error}` : null}
+                ❌ Proceso fallido.{" "}
+                {data?.error ? `Detalle: ${data.error}` : null}
               </div>
             )}
             {loading && (
@@ -188,9 +192,9 @@ function ArtifactsPanel({
   const [dashError, setDashError] = useState<string | null>(null);
 
   // Estados para los Modales
-  const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [showDashModal, setShowDashModal] = useState(false);
+  const [showNarrativeModal, setShowNarrativeModal] = useState(false);
 
   useEffect(() => {
     if (dashHref) {
@@ -243,35 +247,44 @@ function ArtifactsPanel({
     } catch (err: any) {
       setDashLoading(false);
       setDashError(
-        err?.message || "Error al iniciar la generación del dashboard"
+        err?.message || "Error al iniciar la generación del dashboard",
       );
     }
   }
 
-  // --- Descarga Masiva CSV (tarjeta Archivo limpio) ---
+  // --- Descarga Masiva CSV ---
   function handleDownloadAll() {
+    // 1. CSV
     if (csvHref) forceDownload(csvHref, "dataset_limpio.csv");
+
+    // 2. Original
     setTimeout(() => {
       if (inputHref) forceDownload(inputHref, "archivo_original");
     }, 800);
+
     setShowCsvModal(false);
   }
 
-  // --- PDF Dashboard: abre dashboard.html con ?autoPrint=1 ---
+  // --- Abrir dashboard con autoPrint ---
   function handleDashboardPdf() {
     if (!dashHref) return;
+
     const url = dashHref.includes("?")
       ? `${dashHref}&autoPrint=1`
       : `${dashHref}?autoPrint=1`;
+
     window.open(url, "_blank");
   }
 
-  // --- PDF Perfilado: descarga reporte_perfilado.pdf ---
-  function handlePerfilPdf() {
-    const url = perfilPdfHref || perfilHref;
-    if (!url) return;
-    forceDownload(url, "reporte_perfilado.pdf");
-    setShowPerfilModal(false);
+  // --- Abrir reporte narrativo con autoPrint ---
+  function handleNarrativePdf() {
+    if (!narrativeHref) return;
+
+    const url = narrativeHref.includes("?")
+      ? `${narrativeHref}&autoPrint=1`
+      : `${narrativeHref}?autoPrint=1`;
+
+    window.open(url, "_blank");
   }
 
   return (
@@ -304,8 +317,7 @@ function ArtifactsPanel({
               distribución.
             </p>
           </div>
-          <div className="mt-6 flex flex-col gap-3 relative">
-            {/* Ver Online (igual que antes) */}
+          <div className="mt-6 flex flex-col gap-3">
             <Link
               to={
                 perfilHref
@@ -319,49 +331,16 @@ function ArtifactsPanel({
             >
               Ver Online
             </Link>
-
-            {/* Nuevo botón Descargar... -> modal solo PDF */}
-            <button
-              type="button"
-              onClick={() => setShowPerfilModal(true)}
-              disabled={!perfilPdfHref && !perfilHref}
+            <a
+              href={perfilHref ?? undefined}
+              download
               className={
                 btnSecondary +
-                (!perfilPdfHref && !perfilHref
-                  ? " opacity-50 pointer-events-none"
-                  : "")
+                (!perfilHref ? " opacity-50 pointer-events-none" : "")
               }
             >
-              Descargar...
-            </button>
-
-            {showPerfilModal && (
-              <div className="absolute bottom-0 left-0 right-0 z-20 flex flex-col gap-3 p-4 bg-[#F5F1E4] rounded-xl shadow-xl border border-[#E4DCCB] animate-in slide-in-from-bottom-2 fade-in duration-200">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-center">
-                  Descarga en
-                </h4>
-                <p className="text-[11px] text-slate-500 text-center -mt-1 mb-1">
-                  
-                </p>
-
-                <div className="flex justify-center gap-3 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowPerfilModal(false)}
-                    className="px-4 py-2 text-xs font-semibold rounded-full bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePerfilPdf}
-                    className="px-5 py-2 text-xs font-bold rounded-full bg-[#F28C18] text-white shadow-sm hover:bg-[#d9730d]"
-                  >
-                    PDF
-                  </button>
-                </div>
-              </div>
-            )}
+              Descargar HTML
+            </a>
           </div>
         </article>
 
@@ -399,7 +378,7 @@ function ArtifactsPanel({
               to={
                 csvHref
                   ? `/csv-preview?url=${encodeURIComponent(
-                      csvHref
+                      csvHref,
                     )}&id=${encodeURIComponent(runId)}`
                   : "#"
               }
@@ -485,11 +464,16 @@ function ArtifactsPanel({
                   <line x1="9" y1="21" x2="9" y2="9" />
                 </svg>
               </div>
-              {dashReady ? <ReadyBadge /> : dashInProgress ? <GeneratingBadge /> : null}
+              {dashReady ? (
+                <ReadyBadge />
+              ) : dashInProgress ? (
+                <GeneratingBadge />
+              ) : null}
             </div>
             <h3 className="text-base font-bold text-slate-900">Dashboard</h3>
             <p className="mt-2 text-xs leading-relaxed text-slate-500">
-              Visualización interactiva. Gráficos clave generados automáticamente.
+              Visualización interactiva. Gráficos clave generados
+              automáticamente.
             </p>
           </div>
 
@@ -505,6 +489,7 @@ function ArtifactsPanel({
                   Ver Interactivo
                 </a>
 
+                {/* botón que abre el modal */}
                 <button
                   type="button"
                   onClick={() => setShowDashModal(true)}
@@ -520,6 +505,7 @@ function ArtifactsPanel({
                       Descargar en
                     </h4>
 
+                    {/* ÚNICO botón: PDF (abre dashboard con autoPrint) */}
                     <button
                       type="button"
                       onClick={handleDashboardPdf}
@@ -562,7 +548,7 @@ function ArtifactsPanel({
           </div>
         </article>
 
-        {/* 4. REPORTE NARRATIVO AI (igual que antes, solo "Leer Reporte") */}
+        {/* 4. REPORTE NARRATIVO AI - CON MODAL */}
         <article className={cardBase}>
           <div>
             <div className="mb-5 flex items-center justify-between">
@@ -582,7 +568,11 @@ function ArtifactsPanel({
                   <path d="M10 9H8" />
                 </svg>
               </div>
-              {narrativeReady ? <ReadyBadge /> : dashInProgress ? <GeneratingBadge /> : null}
+              {narrativeReady ? (
+                <ReadyBadge />
+              ) : dashInProgress ? (
+                <GeneratingBadge />
+              ) : null}
             </div>
             <h3 className="text-base font-bold text-slate-900">
               Reporte Narrativo AI
@@ -593,16 +583,52 @@ function ArtifactsPanel({
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col gap-3 relative">
             {narrativeReady ? (
-              <a
-                href={narrativeHref ?? undefined}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center justify-center w-full rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white shadow-md hover:bg-indigo-700 focus:outline-none transition-all"
-              >
-                Leer Reporte
-              </a>
+              <>
+                {/* Leer reporte online */}
+                <a
+                  href={narrativeHref ?? undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={btnPrimary}
+                >
+                  Leer Reporte
+                </a>
+
+                {/* Botón que abre el modal de descarga */}
+                <button
+                  type="button"
+                  onClick={() => setShowNarrativeModal(true)}
+                  className={btnSecondary}
+                >
+                  Descargar...
+                </button>
+
+                {/* MODAL REPORTE NARRATIVO */}
+                {showNarrativeModal && (
+                  <div className="absolute bottom-0 left-0 right-0 z-20 flex flex-col gap-2 p-4 bg-[#F5F1E4] rounded-xl shadow-xl border border-[#E4DCCB] animate-in slide-in-from-bottom-2 fade-in duration-200">
+                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-center mb-1">
+                      Descargar en
+                    </h4>
+
+                    <button
+                      type="button"
+                      onClick={handleNarrativePdf}
+                      className="block w-full text-center py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm"
+                    >
+                      PDF
+                    </button>
+
+                    <button
+                      onClick={() => setShowNarrativeModal(false)}
+                      className="mt-2 text-[10px] font-medium text-slate-500 hover:underline self-center"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="rounded-lg bg-slate-100 py-3 px-4 text-center">
                 <span className="text-xs font-medium text-slate-500">
