@@ -89,19 +89,32 @@ export default function StatusPage() {
   // 3. Datos Limpios
   const csvRel = data?.artifacts?.["dataset_limpio.csv"];
 
+  // 3.1 Detalle de limpieza (HTML / PDF / ZIP)
+  const cleaningDetailRel = data?.artifacts?.["detalle_limpieza.html"];
+  const cleaningDetailPdfRel = data?.artifacts?.["detalle_limpieza.pdf"];
+  const cleaningZipRel = data?.artifacts?.["detalle_limpieza.zip"];
+
   // 4. Reporte Narrativo (AI)
   const narrativeRel = data?.artifacts?.["reporte_narrativo.html"];
 
   // 5. Archivo Original
   const inputRel = data?.artifacts?.["input_original"];
 
-  // --- URLs ---
+  // --- URLs absolutas ---
   const perfilHref = perfilRel ? artifactUrl(perfilRel) : null;
   const perfilCsvHref = perfilCsvRel ? artifactUrl(perfilCsvRel) : null;
   const perfilPdfHref = perfilPdfRel ? artifactUrl(perfilPdfRel) : null;
 
   const dashHref = dashRel ? artifactUrl(dashRel) : null;
   const csvHref = csvRel ? artifactUrl(csvRel) : null;
+
+  const cleaningDetailHref = cleaningDetailRel
+    ? artifactUrl(cleaningDetailRel)
+    : null;
+  const cleaningDetailPdfHref = cleaningDetailPdfRel
+    ? artifactUrl(cleaningDetailPdfRel)
+    : null;
+  const cleaningZipHref = cleaningZipRel ? artifactUrl(cleaningZipRel) : null;
 
   const narrativeHref = narrativeRel ? artifactUrl(narrativeRel) : null;
 
@@ -125,8 +138,8 @@ export default function StatusPage() {
           <div className="space-y-2 mb-6">
             {queued && (
               <div className="rounded-xl bg-yellow-50 border border-yellow-100 px-4 py-3 text-sm text-yellow-800 flex items-center gap-2">
-                <span className="animate-pulse">⏳</span> El proceso está en
-                cola… empezará en breve.
+                <span className="animate-pulse">⏳</span> El proceso está
+                en cola… empezará en breve.
               </div>
             )}
             {failed && (
@@ -151,6 +164,9 @@ export default function StatusPage() {
             perfilCsvHref={perfilCsvHref}
             perfilPdfHref={perfilPdfHref}
             csvHref={csvHref}
+            cleaningDetailHref={cleaningDetailHref}
+            cleaningDetailPdfHref={cleaningDetailPdfHref}
+            cleaningZipHref={cleaningZipHref}
             dashHref={dashHref}
             narrativeHref={narrativeHref}
             inputHref={inputHref}
@@ -171,6 +187,9 @@ type ArtifactsPanelProps = {
   perfilCsvHref: string | null;
   perfilPdfHref: string | null;
   csvHref: string | null;
+  cleaningDetailHref: string | null;
+  cleaningDetailPdfHref: string | null;
+  cleaningZipHref: string | null;
   dashHref: string | null;
   narrativeHref: string | null;
   inputHref: string | null;
@@ -181,9 +200,12 @@ function ArtifactsPanel({
   status,
   currentStep,
   perfilHref,
-  perfilCsvHref,
+  perfilCsvHref, // reservado
   perfilPdfHref,
   csvHref,
+  cleaningDetailHref,
+  cleaningDetailPdfHref,
+  cleaningZipHref,
   dashHref,
   narrativeHref,
   inputHref,
@@ -192,6 +214,7 @@ function ArtifactsPanel({
   const [dashError, setDashError] = useState<string | null>(null);
 
   // Estados para los Modales
+  const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
   const [showDashModal, setShowDashModal] = useState(false);
   const [showNarrativeModal, setShowNarrativeModal] = useState(false);
@@ -201,6 +224,21 @@ function ArtifactsPanel({
       setDashLoading(false);
     }
   }, [dashHref]);
+
+  // --- Helper: agrega ?download=1 ---
+  const addDownloadParam = (base: string | null): string | null => {
+    if (!base) return null;
+    try {
+      const u = new URL(base, window.location.origin);
+      if (!u.searchParams.has("download")) {
+        u.searchParams.set("download", "1");
+      }
+      return u.toString();
+    } catch {
+      const sep = base.includes("?") ? "&" : "?";
+      return `${base}${sep}download=1`;
+    }
+  };
 
   // --- Estilos con tu paleta ---
   const btnPrimary =
@@ -252,20 +290,38 @@ function ArtifactsPanel({
     }
   }
 
-  // --- Descarga Masiva CSV ---
+  // --- Descarga Masiva CSV + Original + Detalle ---
   function handleDownloadAll() {
-    // 1. CSV
+    // Si el backend ya preparó el ZIP, usamos eso
+    if (cleaningZipHref) {
+      const finalUrl = addDownloadParam(cleaningZipHref);
+      if (finalUrl) {
+        forceDownload(finalUrl, "detalle_limpieza.zip");
+      }
+      setShowCsvModal(false);
+      return;
+    }
+
+    // Fallback: comportamiento antiguo (tres descargas separadas)
     if (csvHref) forceDownload(csvHref, "dataset_limpio.csv");
 
-    // 2. Original
     setTimeout(() => {
       if (inputHref) forceDownload(inputHref, "archivo_original");
     }, 800);
 
+    setTimeout(() => {
+      if (cleaningDetailHref) {
+        const finalUrl = addDownloadParam(cleaningDetailHref);
+        if (finalUrl) {
+          forceDownload(finalUrl, "detalle_limpieza.html");
+        }
+      }
+    }, 1600);
+
     setShowCsvModal(false);
   }
 
-  // --- Abrir dashboard con autoPrint ---
+  // --- Dashboard: PDF (autoPrint) ---
   function handleDashboardPdf() {
     if (!dashHref) return;
 
@@ -276,7 +332,50 @@ function ArtifactsPanel({
     window.open(url, "_blank");
   }
 
-  // --- Abrir reporte narrativo con autoPrint ---
+  // --- Dashboard: HTML (descarga forzada) ---
+  function handleDashboardHtml() {
+    if (!dashHref) return;
+    const finalUrl = addDownloadParam(dashHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "dashboard.html");
+    setShowDashModal(false);
+  }
+
+  // --- Perfilado: HTML / PDF ---
+  function handlePerfilHtml() {
+    if (!perfilHref) return;
+    const finalUrl = addDownloadParam(perfilHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "reporte_perfilado.html");
+    setShowPerfilModal(false);
+  }
+
+  function handlePerfilPdf() {
+    if (!perfilPdfHref) return;
+    const finalUrl = addDownloadParam(perfilPdfHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "reporte_perfilado.pdf");
+    setShowPerfilModal(false);
+  }
+
+  // --- Detalle de limpieza: HTML / PDF ---
+  function handleCleaningDetailHtml() {
+    if (!cleaningDetailHref) return;
+    const finalUrl = addDownloadParam(cleaningDetailHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "detalle_limpieza.html");
+    setShowCsvModal(false);
+  }
+
+  function handleCleaningDetailPdf() {
+    if (!cleaningDetailPdfHref) return;
+    const finalUrl = addDownloadParam(cleaningDetailPdfHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "detalle_limpieza.pdf");
+    setShowCsvModal(false);
+  }
+
+  // --- Reporte Narrativo: PDF (autoPrint) ---
   function handleNarrativePdf() {
     if (!narrativeHref) return;
 
@@ -286,6 +385,23 @@ function ArtifactsPanel({
 
     window.open(url, "_blank");
   }
+
+  // --- Reporte Narrativo: HTML (descarga) ---
+  function handleNarrativeHtml() {
+    if (!narrativeHref) return;
+    const finalUrl = addDownloadParam(narrativeHref);
+    if (!finalUrl) return;
+    forceDownload(finalUrl, "reporte_narrativo.html");
+    setShowNarrativeModal(false);
+  }
+
+  // URL para el preview del perfilado con soporte de PDF
+  const perfilPreviewUrl =
+    perfilHref
+      ? `/perfilado?url=${encodeURIComponent(perfilHref)}${
+          perfilPdfHref ? `&pdf=${encodeURIComponent(perfilPdfHref)}` : ""
+        }`
+      : "#";
 
   return (
     <section className="mt-4">
@@ -317,30 +433,68 @@ function ArtifactsPanel({
               distribución.
             </p>
           </div>
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-6 flex flex-col gap-3 relative">
+            {/* Ver online en vista dedicada */}
             <Link
-              to={
-                perfilHref
-                  ? `/perfilado?url=${encodeURIComponent(perfilHref)}`
-                  : "#"
-              }
+              to={perfilReady ? perfilPreviewUrl : "#"}
               className={
                 btnPrimary +
-                (!perfilHref ? " opacity-50 pointer-events-none" : "")
+                (!perfilReady ? " opacity-50 pointer-events-none" : "")
               }
             >
               Ver Online
             </Link>
-            <a
-              href={perfilHref ?? undefined}
-              download
+
+            {/* Botón que abre modal de descarga */}
+            <button
+              type="button"
+              onClick={() => setShowPerfilModal(true)}
+              disabled={!perfilHref && !perfilPdfHref}
               className={
                 btnSecondary +
-                (!perfilHref ? " opacity-50 pointer-events-none" : "")
+                (!perfilHref && !perfilPdfHref
+                  ? " opacity-50 cursor-not-allowed"
+                  : "")
               }
             >
-              Descargar HTML
-            </a>
+              Descargar...
+            </button>
+
+            {/* MODAL PERFILADO: HTML / PDF / Cerrar */}
+            {showPerfilModal && (
+              <div className="absolute bottom-0 left-0 right-0 z-20 flex flex-col gap-2 p-4 bg-[#F5F1E4] rounded-xl shadow-xl border border-[#E4DCCB] animate-in slide-in-from-bottom-2 fade-in duration-200">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider text-center mb-1">
+                  Descargar en
+                </h4>
+
+                <button
+                  type="button"
+                  onClick={handlePerfilHtml}
+                  className="block w-full text-center py-2 text-xs font-bold text-[#F28C18] bg-white border border-[#F28C18]/60 rounded-lg hover:bg-orange-50 transition-colors"
+                >
+                  HTML
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePerfilPdf}
+                  disabled={!perfilPdfHref}
+                  className={
+                    "block w-full text-center py-2 text-xs font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm transition-colors" +
+                    (!perfilPdfHref ? " opacity-50 cursor-not-allowed" : "")
+                  }
+                >
+                  PDF
+                </button>
+
+                <button
+                  onClick={() => setShowPerfilModal(false)}
+                  className="mt-2 text-[10px] font-medium text-slate-500 hover:underline self-center"
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
           </div>
         </article>
 
@@ -425,9 +579,39 @@ function ArtifactsPanel({
                   📦 Archivo Original
                 </a>
 
+                {/* 3. Detalle de limpieza (HTML) */}
+                <button
+                  type="button"
+                  onClick={handleCleaningDetailHtml}
+                  disabled={!cleaningDetailHref}
+                  className={
+                    "block w-full text-center py-2 text-xs font-bold bg-white border rounded-lg hover:bg-slate-50 transition-colors " +
+                    (cleaningDetailHref
+                      ? "text-slate-700 border-slate-300"
+                      : "opacity-50 cursor-not-allowed text-slate-400 border-slate-200")
+                  }
+                >
+                  🧹 Detalle de limpieza (HTML)
+                </button>
+
+                {/* 4. Detalle de limpieza (PDF) */}
+                <button
+                  type="button"
+                  onClick={handleCleaningDetailPdf}
+                  disabled={!cleaningDetailPdfHref}
+                  className={
+                    "block w-full text-center py-2 text-xs font-bold bg-white border rounded-lg hover:bg-slate-50 transition-colors " +
+                    (cleaningDetailPdfHref
+                      ? "text-slate-700 border-slate-300"
+                      : "opacity-50 cursor-not-allowed text-slate-400 border-slate-200")
+                  }
+                >
+                  🧹 Detalle de limpieza (PDF)
+                </button>
+
                 <div className="h-px bg-[#E4DCCB] my-1"></div>
 
-                {/* 3. Descargar Todo */}
+                {/* 5. Descargar Todo (ZIP) */}
                 <button
                   onClick={handleDownloadAll}
                   className="block w-full text-center py-2 text-xs font-bold text-white bg-slate-800 rounded-lg hover:bg-slate-900 shadow-sm"
@@ -505,7 +689,16 @@ function ArtifactsPanel({
                       Descargar en
                     </h4>
 
-                    {/* ÚNICO botón: PDF (abre dashboard con autoPrint) */}
+                    {/* HTML -> descarga forzada */}
+                    <button
+                      type="button"
+                      onClick={handleDashboardHtml}
+                      className="block w-full text-center py-2 text-xs font-bold text-[#F28C18] bg-white border border-[#F28C18]/60 rounded-lg hover:bg-orange-50 transition-colors"
+                    >
+                      HTML
+                    </button>
+
+                    {/* PDF -> abre con autoPrint */}
                     <button
                       type="button"
                       onClick={handleDashboardPdf}
@@ -612,6 +805,16 @@ function ArtifactsPanel({
                       Descargar en
                     </h4>
 
+                    {/* HTML -> descarga */}
+                    <button
+                      type="button"
+                      onClick={handleNarrativeHtml}
+                      className="block w-full text-center py-2 text-xs font-bold text-[#F28C18] bg-white border border-[#F28C18]/60 rounded-lg hover:bg-orange-50 transition-colors"
+                    >
+                      HTML
+                    </button>
+
+                    {/* PDF -> autoPrint */}
                     <button
                       type="button"
                       onClick={handleNarrativePdf}

@@ -1,4 +1,4 @@
-// src/libs/api.ts
+// frontend/src/libs/api.ts
 const API = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 
 /** Wrapper con credentials y manejo de Content-Type.
@@ -75,6 +75,21 @@ export async function uploadFile(file: File) {
   return res.json();
 }
 
+/** Nuevo: modo multicanal (varios archivos a la vez) */
+export async function uploadMultiFiles(files: File[]) {
+  const fd = new FormData();
+  for (const f of files) {
+    fd.append("files", f);
+  }
+  const res = await fetch(API + "/api/process/multi", {
+    method: "POST",
+    credentials: "include",
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export const getStatus = (id: string) => http(`/api/status/${id}`);
 
 export const requestDashboard = (id: string) =>
@@ -86,13 +101,15 @@ export const requestDashboard = (id: string) =>
 /** Construye URL a artefactos protegidos por el backend.
  * Si recibe "runs/<id>/artifacts/<name>", lo mapea a "/api/artifacts/<id>/<name>".
  * Para cualquier otra ruta relativa, hace fallback a `${API}/${rel}`. */
-  
- export function artifactUrl(rel: string) {
+
+export function artifactUrl(rel: string) {
   const clean = (rel || "").replace(/^\/+/, "");
   const m = clean.match(/^runs\/([^/]+)\/artifacts\/([^/]+)$/i);
   if (m) {
     const [, pid, name] = m;
-    return `${API}/api/artifacts/${encodeURIComponent(pid)}/${encodeURIComponent(name)}`;
+    return `${API}/api/artifacts/${encodeURIComponent(pid)}/${encodeURIComponent(
+      name
+    )}`;
   }
   return `${API}/${clean}`;
 }

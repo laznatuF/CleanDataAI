@@ -1,4 +1,4 @@
-// src/components/dropzone.tsx
+// frontend/src/components/dropzone.tsx
 import React, { useRef, useState } from 'react';
 
 type Props = {

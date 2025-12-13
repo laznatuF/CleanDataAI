@@ -1,7 +1,7 @@
-// src/pages/Home.tsx
+// frontend/src/pages/Home.tsx
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { uploadFile } from "../../libs/api";
+import { uploadFile, uploadMultiFiles } from "../../libs/api";
 import Header from "../../components/Header";
 
 const ACCEPT = ".csv,.ods,.xlsx,.xls";
@@ -15,7 +15,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false); // subiendo/procesando
   const [error, setError] = useState<string | null>(null);
 
-  const [file, setFile] = useState<File | null>(null); // archivo seleccionado (no subido)
+  const [files, setFiles] = useState<File[]>([]); // ahora puede haber 1 o varios archivos
 
   function openDialog() {
     inputRef.current?.click();
@@ -38,39 +38,56 @@ export default function Home() {
     return null;
   }
 
-  // Solo guarda/valida el archivo. No sube ni navega aún.
-  function pickFile(f: File | null) {
-    if (!f) return;
-    const msg = validateClient(f);
-    if (msg) {
-      setError(msg);
-      setFile(null);
-      return;
+  // Ahora admite 1 o más archivos
+  function pickFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+
+    const arr = Array.from(fileList);
+    const next: File[] = [];
+
+    for (const f of arr) {
+      const msg = validateClient(f);
+      if (msg) {
+        setError(msg);
+        setFiles([]);
+        return;
+      }
+      next.push(f);
     }
+
     setError(null);
-    setFile(f);
+    setFiles(next);
   }
 
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    pickFile(e.target.files?.[0] ?? null);
+    pickFiles(e.target.files);
     clearInputControl(); // permite volver a elegir el mismo archivo luego
   }
 
   function onDrop(e: React.DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setOver(false);
-    pickFile(e.dataTransfer.files?.[0] ?? null);
+    pickFiles(e.dataTransfer.files);
   }
 
   async function onProcess() {
-    if (!file) {
-      setError("Selecciona un archivo antes de procesar.");
+    if (!files.length) {
+      setError("Selecciona al menos un archivo antes de procesar.");
       return;
     }
     try {
       setBusy(true);
       setError(null);
-      const res = await uploadFile(file); // aquí recién llamamos al backend
+
+      let res: any;
+      if (files.length === 1) {
+        // MODO NORMAL (1 archivo)
+        res = await uploadFile(files[0]);
+      } else {
+        // MODO MULTICANAL (Shopify + Mercado Libre, etc.)
+        res = await uploadMultiFiles(files);
+      }
+
       const pid = res.process_id || res.id;
       navigate(`/status/${pid}`);
     } catch (e) {
@@ -80,30 +97,31 @@ export default function Home() {
     }
   }
 
-  function removeFile() {
-    setFile(null);
+  function removeFiles() {
+    setFiles([]);
     setError(null);
   }
 
   const fileInfo =
-    file &&
-    `${file.name} — ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+    files.length === 1
+      ? `${files[0].name} — ${(files[0].size / 1024 / 1024).toFixed(2)} MB`
+      : files.length > 1
+      ? `${files.length} archivos seleccionados`
+      : null;
 
   return (
     <div className="min-h-screen bg-[#F5F1E4] text-slate-800">
       {/* Logo + menú (modo flotante / barra responsiva) */}
       <Header />
 
-      {/* Contenido principal:
-          - En móvil: margen superior moderado y padding lateral normal.
-          - En desktop: se deja espacio para el menú fijo a la izquierda. */}
+      {/* Contenido principal */}
       <main className="pt-28 pb-16 px-4 md:pt-32 md:px-6 lg:pt-40 lg:pl-40 lg:pr-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-start">
-          {/* Columna principal: subir archivo */}
+          {/* Columna principal: subir archivo(s) */}
           <section className="flex-1">
             <header className="mb-6 text-center">
               <h1 className="text-2xl font-semibold text-slate-900">
-                Sube tu archivo
+                Sube tu archivo o archivos
               </h1>
               <p className="mt-1 text-sm text-slate-500">
                 Automatiza la limpieza y prepara tus planillas en segundos.
@@ -126,7 +144,7 @@ export default function Home() {
                     ? "bg-slate-50 border-[#F28C18]/60"
                     : "border-slate-300 bg-[#FDFBF6]",
                 ].join(" ")}
-                aria-label="Zona para arrastrar o seleccionar archivo"
+                aria-label="Zona para arrastrar o seleccionar archivo(s)"
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
@@ -137,6 +155,7 @@ export default function Home() {
                   ref={inputRef}
                   type="file"
                   accept={ACCEPT}
+                  multiple
                   className="hidden"
                   onChange={onInputChange}
                 />
@@ -155,7 +174,8 @@ export default function Home() {
                 </div>
 
                 <p className="text-sm text-slate-600">
-                  Arrastra tu archivo aquí o haz clic para examinar
+                  Arrastra tu archivo o varios archivos aquí o haz clic para
+                  examinar
                 </p>
 
                 <div className="mt-5 flex items-center justify-center gap-3">
@@ -165,13 +185,13 @@ export default function Home() {
                     className="inline-flex items-center rounded-full bg-[#F28C18] px-5 py-2 text-sm font-medium text-white shadow hover:bg-[#d9730d] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F28C18] disabled:opacity-60"
                     disabled={busy}
                   >
-                    {file ? "Cambiar archivo" : "Examinar"}
+                    {files.length ? "Cambiar archivos" : "Examinar"}
                   </button>
 
-                  {file && (
+                  {files.length > 0 && (
                     <button
                       type="button"
-                      onClick={removeFile}
+                      onClick={removeFiles}
                       className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300 disabled:opacity-60"
                       disabled={busy}
                     >
@@ -180,15 +200,15 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Info del archivo seleccionado */}
-                {file && (
+                {/* Info del archivo/archivos seleccionados */}
+                {fileInfo && (
                   <div className="mt-4 text-xs text-slate-500">
                     {fileInfo}
                   </div>
                 )}
 
                 <div className="mt-3 text-[11px] text-slate-500">
-                  (.csv, .ods, .xlsx, .xls) — Máx. {MAX_MB} MB
+                  (.csv, .ods, .xlsx, .xls) — Máx. {MAX_MB} MB por archivo
                 </div>
               </div>
 
@@ -198,10 +218,10 @@ export default function Home() {
                   type="button"
                   onClick={onProcess}
                   className="inline-flex items-center rounded-full bg-[#333A46] px-5 py-2 text-sm font-medium text-white hover:bg-[#252a33] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#333A46] disabled:opacity-60"
-                  disabled={busy || !file}
+                  disabled={busy || !files.length}
                   title={
-                    !file
-                      ? "Selecciona un archivo para continuar"
+                    !files.length
+                      ? "Selecciona al menos un archivo para continuar"
                       : "Procesar"
                   }
                 >
@@ -221,7 +241,7 @@ export default function Home() {
                 </div>
               )}
 
-           <p className="mt-6 text-[11px] text-slate-400 text-center">
+              <p className="mt-6 text-[11px] text-slate-400 text-center">
                 En cumplimiento de privacidad: los archivos temporales se
                 eliminan tras el proceso.
               </p>
