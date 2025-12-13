@@ -1,4 +1,4 @@
-// src/api/pages/ProfilePreview.tsx
+// src/pages/ProfilePreview.tsx
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -12,14 +12,15 @@ export default function ProfilePreview() {
   const query = useQuery();
   const navigate = useNavigate();
 
-  const url = query.get("url");  // HTML del perfilado (iframe)
-  const csv = query.get("csv");  // dataset_limpio.csv
-  const pdf = query.get("pdf");  // reporte_integrado (HTML o PDF)
+  // url = Enlace al HTML del perfilado (usado en el iframe y descarga HTML)
+  const url = query.get("url");
+  // pdf = Enlace al PDF generado
+  const pdf = query.get("pdf");
 
   const [showDialog, setShowDialog] = useState(false);
 
-  // Añade el parámetro ?download=1 o &download=1 según corresponda
-  const addDownloadParam = (base: string) => {
+  // Añade el parámetro ?download=1 o &download=1 para forzar la descarga en el backend
+  const addDownloadParam = (base: string): string => {
     try {
       const u = new URL(base);
       if (!u.searchParams.has("download")) {
@@ -32,24 +33,28 @@ export default function ProfilePreview() {
     }
   };
 
-  const handleDownload = (kind: "csv" | "pdf") => {
+  // Acepta "html" o "pdf" y descarga SOLO el tipo correspondiente
+  const handleDownload = (kind: "html" | "pdf") => {
     let target: string | null = null;
 
-    if (kind === "csv") {
-      // Prioridad: CSV que vino por query, si no, la propia URL del perfilado
-      target = csv || url;
+    if (kind === "html") {
+      // Para HTML usamos siempre la URL del reporte web
+      target = url;
     } else {
-      // Prioridad: PDF/reporte integrado que vino por query, si no, la URL del perfilado
-      target = pdf || url;
+      // Para PDF usamos únicamente el enlace PDF
+      target = pdf;
     }
 
     if (!target) {
-      alert("No se encontró un enlace para descargar este perfilado.");
+      alert(
+        kind === "html"
+          ? "No se encontró un enlace HTML para descargar este perfilado."
+          : "No se encontró un enlace PDF para descargar este perfilado."
+      );
       return;
     }
 
     const finalUrl = addDownloadParam(target);
-    // Esto abre una nueva pestaña/descarga, no debería ser bloqueado porque viene de un click
     window.open(finalUrl, "_blank");
     setShowDialog(false);
   };
@@ -70,7 +75,7 @@ export default function ProfilePreview() {
 
         {url && (
           <>
-            {/* marco con el reporte HTML embebido */}
+            {/* Iframe con el reporte HTML */}
             <div className="mt-4 max-h-[70vh] rounded-2xl border bg-white overflow-auto">
               <iframe
                 src={url}
@@ -79,7 +84,7 @@ export default function ProfilePreview() {
               />
             </div>
 
-            {/* botones ABAJO */}
+            {/* Botones inferiores */}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
@@ -108,7 +113,7 @@ export default function ProfilePreview() {
           </>
         )}
 
-        {/* Diálogo de selección CSV / PDF */}
+        {/* Diálogo de selección HTML / PDF */}
         {showDialog && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40">
             <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
@@ -116,7 +121,7 @@ export default function ProfilePreview() {
                 ¿En qué formato quieres descargar el perfilado?
               </h2>
               <p className="mt-2 text-xs text-slate-500">
-                CSV descarga el archivo limpio; PDF descarga el reporte.
+                Elige HTML para interactividad o PDF para imprimir.
               </p>
               <div className="mt-5 flex justify-end gap-2">
                 <button
@@ -126,13 +131,17 @@ export default function ProfilePreview() {
                 >
                   Cancelar
                 </button>
+
+                {/* BOTÓN HTML */}
                 <button
                   type="button"
-                  onClick={() => handleDownload("csv")}
+                  onClick={() => handleDownload("html")}
                   className="rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
                 >
-                  CSV
+                  HTML
                 </button>
+
+                {/* BOTÓN PDF */}
                 <button
                   type="button"
                   onClick={() => handleDownload("pdf")}

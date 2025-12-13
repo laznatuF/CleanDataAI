@@ -11,8 +11,8 @@ import PlansPage from "./pages/Plans";
 import CreateAccount from "./pages/CreateAccount";
 import CsvPreview from "./pages/CsvPreview";
 import ProfilePreview from "./pages/ProfilePreview";
-import AboutPage from "./pages/about";
-import HelpPage from "./pages/help";     
+import AboutPage from "./pages/About";
+import HelpPage from "./pages/Help";     
 
 
 
