@@ -25,5 +25,32 @@
     "created_at": "2025-10-26T21:35:42.239055Z",
     "updated_at": "2025-10-26T21:35:42.239055Z",
     "process_count": 0
+  },
+  {
+    "id": "00fd384028be4658b8f4d2598d2834f2",
+    "email": "grisresplandeciente@gmail.com",
+    "name": "Daniel",
+    "plan": "standard",
+    "created_at": "2025-12-15T07:53:44.837506Z",
+    "updated_at": "2025-12-15T07:54:59.478534Z",
+    "process_count": 0
+  },
+  {
+    "id": "f6adf600a9d5491cb4b5b0128d9e0678",
+    "email": "grisresplandeciente@gmail.cl",
+    "name": "",
+    "plan": "free",
+    "created_at": "2025-12-15T07:55:57.712885Z",
+    "updated_at": "2025-12-15T07:55:57.712885Z",
+    "process_count": 0
+  },
+  {
+    "id": "1c43db94124d41408162746ae8ee24d7",
+    "email": "danielqarias97@outlook.com",
+    "name": "Daner",
+    "plan": "pro",
+    "created_at": "2025-12-15T10:27:01.555986Z",
+    "updated_at": "2025-12-15T10:27:11.811992Z",
+    "process_count": 0
   }
 ]

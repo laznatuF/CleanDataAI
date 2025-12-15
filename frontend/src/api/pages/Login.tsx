@@ -1,20 +1,22 @@
-// src/pages/Login.tsx
+// src/api/pages/Login.tsx
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Header from "../../components/Header";
-// importa aquí tu función actual para enviar enlace/código, si ya la tienes
-// import { sendMagicLink } from "../libs/api";
+import { useAuth } from "../../context/Authcontext";
 
 export default function Login() {
-  // si ya tienes estos estados en tu archivo, usa los tuyos y borra estos:
+  const auth = useAuth();
+
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [okMsg, setOkMsg] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setOkMsg(null);
 
     if (!email.trim()) {
       setError("Ingresa un correo electrónico.");
@@ -23,10 +25,8 @@ export default function Login() {
 
     try {
       setBusy(true);
-      // 👉 aquí va tu lógica actual para enviar el enlace/código:
-      // await sendMagicLink({ email, name });
-      console.log("Login con", { email, name });
-      // puedes mostrar un toast o mensaje de éxito si quieres
+      await auth.requestLogin(email.trim(), name.trim()); // ✅ backend /api/auth/request
+      setOkMsg("Listo. Revisa tu correo: te enviamos un enlace mágico y un código (OTP).");
     } catch (err) {
       setError((err as Error).message || "No se pudo enviar el enlace.");
     } finally {
@@ -36,30 +36,18 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-[#F5F1E4] text-slate-800">
-      {/* menú lateral + header con iconos (ya lo tienes hecho) */}
       <Header />
 
-      {/* Contenido principal: deja margen para el menú izquierdo */}
       <main className="pt-32 pb-10 px-6 md:px-10 lg:pl-40">
         <div className="mx-auto max-w-xl">
-          {/* TÍTULO */}
-        <h1 className="text-3xl font-semibold text-slate-900 text-center">
-  Iniciar Sesión
-</h1>
+          <h1 className="text-3xl font-semibold text-slate-900 text-center">
+            Iniciar Sesión
+          </h1>
 
-
-          {/* FORMULARIO */}
-          <form
-  onSubmit={onSubmit}
-  className="mt-10 mx-auto w-full max-w-md space-y-5"
->
-
+          <form onSubmit={onSubmit} className="mt-10 mx-auto w-full max-w-md space-y-5">
             {/* Email */}
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
+              <label htmlFor="email" className="mb-1 block text-sm font-medium text-slate-700">
                 Correo electrónico
               </label>
               <input
@@ -75,10 +63,7 @@ export default function Login() {
 
             {/* Nombre opcional */}
             <div>
-              <label
-                htmlFor="name"
-                className="mb-1 block text-sm font-medium text-slate-700"
-              >
+              <label htmlFor="name" className="mb-1 block text-sm font-medium text-slate-700">
                 Nombre de Usuario (opcional)
               </label>
               <input
@@ -92,48 +77,49 @@ export default function Login() {
               />
             </div>
 
-            {/* Texto explicativo (como en tu maqueta) */}
             <p className="text-sm leading-relaxed text-slate-600">
-              Te enviaremos un correo con un enlace y un código de un solo uso
-              para completar el acceso. Elige el método que prefieras.
+              Te enviaremos un correo con un enlace y un código de un solo uso para completar el acceso.
             </p>
 
-            {/* Error (si lo usas) */}
+            {/* OK */}
+            {okMsg && (
+              <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+                {okMsg}
+              </div>
+            )}
+
+            {/* Error */}
             {error && (
               <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
                 {error}
               </div>
             )}
 
-         {/* Botón principal */}
-<div className="pt-4 flex justify-center">
-  <button
-    type="submit"
-    disabled={busy}
-    className="
-      inline-flex items-center justify-center
-      rounded-full
-      bg-[#F28C18] hover:bg-[#d9730d]
-      px-10 py-2.5
-      text-sm font-semibold text-white
-      shadow
-      focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40
-      disabled:opacity-60
-      w-full sm:w-auto
-    "
-  >
-    {busy ? "Enviando…" : "Iniciar Sesión"}
-  </button>
-</div>
+            {/* Botón */}
+            <div className="pt-4 flex justify-center">
+              <button
+                type="submit"
+                disabled={busy}
+                className="
+                  inline-flex items-center justify-center
+                  rounded-full
+                  bg-[#F28C18] hover:bg-[#d9730d]
+                  px-10 py-2.5
+                  text-sm font-semibold text-white
+                  shadow
+                  focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40
+                  disabled:opacity-60
+                  w-full sm:w-auto
+                "
+              >
+                {busy ? "Enviando…" : "Iniciar Sesión"}
+              </button>
+            </div>
 
-
-            {/* Pregunta / Crear cuenta */}
+            {/* Crear cuenta */}
             <p className="pt-2 text-sm text-slate-600 text-center">
               ¿Aún no tienes una cuenta?{" "}
-              <Link
-                to="/crear-cuenta"
-                className="font-semibold text-[#1d7fd6] hover:underline"
-              >
+              <Link to="/crear-cuenta" className="font-semibold text-[#1d7fd6] hover:underline">
                 Crear Cuenta
               </Link>
             </p>

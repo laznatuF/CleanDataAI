@@ -2,28 +2,35 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import Header from "../../components/Header";
-import { verifyMagic } from "../../libs/api";
+import { useAuth } from "../../context/Authcontext";
 
 export default function LoginToken() {
+  const auth = useAuth();
   const nav = useNavigate();
   const [qp] = useSearchParams();
+
   const token = qp.get("token") || "";
   const redirectTo = qp.get("redirect") || "/";
+
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
         if (!token) throw new Error("Falta token en la URL.");
-        await verifyMagic({ token });
-        if (!cancelled) nav(redirectTo);
+        await auth.verifyToken(token); // ✅ actualiza AuthContext (cookie + user)
+        if (!cancelled) nav(redirectTo, { replace: true });
       } catch (e) {
         if (!cancelled) setErr((e as Error).message);
       }
     })();
-    return () => { cancelled = true; };
-  }, [token, redirectTo, nav]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, redirectTo, nav, auth]);
 
   return (
     <div className="min-h-screen bg-white text-slate-800">

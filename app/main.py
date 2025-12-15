@@ -14,19 +14,29 @@ from app.core.config import (
     ARTIFACTS_PUBLIC,
     HISTORY_PUBLIC,
 )
+
 from app.api.status import router as status_router
 from app.api.process import router as process_router
-from app.api.auth_pwless import router as auth_router      # /api/auth/*
-from app.api.artifacts import router as artifacts_router   # /artifacts* (definido en router)
-from app.api.history import router as history_router       # /history*   (definido en router)
+from app.api.auth_pwless import router as auth_router       # /api/auth/*
+from app.api.artifacts import router as artifacts_router    # /artifacts* (definido en router)
+from app.api.history import router as history_router        # /history*   (definido en router)
 from app.api.private_demo import router as private_demo_router
-from app.api.help import router as help_router             # 👈 NUEVO
+from app.api.help import router as help_router              # /api/help (prefix dentro del router)
 
 app = FastAPI(title="CleanDataAI")
 
+
+def _now_iso() -> str:
+    return datetime.utcnow().isoformat() + "Z"
+
+
 # ---------- CORS (imprescindible allow_credentials para cookies) ----------
+def _norm_origin(o: str) -> str:
+    return (o or "").strip().rstrip("/")
+
+
 allowed_origins = {
-    (FRONTEND_ORIGIN or "").rstrip("/"),
+    _norm_origin(FRONTEND_ORIGIN),
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 }
@@ -39,10 +49,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def _now_iso() -> str:
-    return datetime.utcnow().isoformat() + "Z"
 
 
 # ---------- Meta ----------
@@ -82,26 +88,26 @@ def api_health_alias():
 if os.getenv("EXPOSE_RUNS_STATIC", "1") == "1":
     app.mount("/runs", StaticFiles(directory=str(RUNS_DIR)), name="runs")
 
+
 # ---------- Routers ----------
-# Auth passwordless (ya viene con prefix="/api/auth" dentro del propio router)
+# Auth passwordless (router ya trae prefix="/api/auth")
 app.include_router(auth_router)
 
 # Rutas de negocio bajo /api
-app.include_router(process_router, prefix="/api")   # /api/process
-app.include_router(status_router,  prefix="/api")   # /api/status
+app.include_router(process_router, prefix="/api")    # /api/process
+app.include_router(status_router, prefix="/api")     # /api/status
 
-# Endpoints protegidos /api/*
-app.include_router(artifacts_router, prefix="/api") # /api/artifacts/{id}/{name}
-app.include_router(history_router,  prefix="/api")  # /api/history/{id}[...]
+# Endpoints “protegidos” (o al menos bajo /api)
+app.include_router(artifacts_router, prefix="/api")  # /api/artifacts/{id}/{name}
+app.include_router(history_router, prefix="/api")    # /api/history/{id}[...]
 
 app.include_router(private_demo_router, prefix="/api")
 
-# Help / soporte (router ya viene con prefix="/api/help")
+# Help / soporte (router ya trae prefix="/api/help")
 app.include_router(help_router)
 
 # Endpoints públicos (solo si los flags lo permiten; útiles en dev/tests)
 if ARTIFACTS_PUBLIC:
-    app.include_router(artifacts_router)            # /artifacts/{id}/{name}
+    app.include_router(artifacts_router)             # /artifacts/{id}/{name}
 if HISTORY_PUBLIC:
-    app.include_router(history_router)              # /history/{id}[...]
-
+    app.include_router(history_router)               # /history/{id}[...]

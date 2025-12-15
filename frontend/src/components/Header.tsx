@@ -1,14 +1,10 @@
 // src/components/Header.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { me, logout as apiLogout } from "../libs/api";
+import { useAuth } from "../context/Authcontext";
+import type { User } from "../libs/api";
 
-type SessionUser = {
-  id: string;
-  email: string;
-  name?: string;
-  plan?: string;
-} | null;
+type SessionUser = User;
 
 type MenuItem = {
   href: string;
@@ -26,11 +22,7 @@ function IconHome() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path
-        d="M6.5 11.5V19h11v-7.5"
-        strokeWidth={1.6}
-        strokeLinecap="round"
-      />
+      <path d="M6.5 11.5V19h11v-7.5" strokeWidth={1.6} strokeLinecap="round" />
     </svg>
   );
 }
@@ -117,11 +109,7 @@ function IconUserOff() {
         strokeWidth={1.8}
         strokeLinecap="round"
       />
-      <path
-        d="M17 6.5l3 3M20 6.5l-3 3"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-      />
+      <path d="M17 6.5l3 3M20 6.5l-3 3" strokeWidth={1.8} strokeLinecap="round" />
     </svg>
   );
 }
@@ -155,7 +143,6 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
       className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40"
       aria-label="Cambiar modo oscuro"
     >
-      {/* Luna */}
       <svg viewBox="0 0 24 24" className="h-4 w-4" stroke="currentColor" fill="none">
         <path
           d="M19 14.5A7 7 0 0 1 11.5 5 5.5 5.5 0 1 0 19 14.5Z"
@@ -167,51 +154,95 @@ function DarkModeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => voi
   );
 }
 
-// Bloque estado autenticación
-function AuthStatus({ user }: { user: SessionUser }) {
+function AuthStatus({
+  user,
+  menuOpen,
+  setMenuOpen,
+  onLogout,
+  containerRef,
+}: {
+  user: SessionUser;
+  menuOpen: boolean;
+  setMenuOpen: (v: boolean) => void;
+  onLogout: () => Promise<void>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const isLogged = !!user;
 
+  if (!isLogged) {
+    return (
+      <Link to="/login" className="flex flex-col items-center text-xs text-slate-600 hover:text-[#F28C18]">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white shadow-sm mb-1">
+          <IconUserOff />
+        </div>
+        <span className="leading-none">sin</span>
+        <span className="leading-none font-semibold">Acceder</span>
+      </Link>
+    );
+  }
+
   return (
-    <Link
-      to={isLogged ? "/mis-procesos" : "/login"}
-      className="flex flex-col items-center text-xs text-slate-600 hover:text-[#F28C18]"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white shadow-sm mb-1">
-        {isLogged ? <IconUserOn /> : <IconUserOff />}
-      </div>
-      <span className="leading-none">
-        {isLogged ? (user?.name || "Sesión") : "sin"}
-      </span>
-      <span className="leading-none font-semibold">
-        {isLogged ? "Mi cuenta" : "Acceder"}
-      </span>
-    </Link>
+    <div ref={containerRef} className="relative flex flex-col items-center text-xs text-slate-600">
+      <button
+        type="button"
+        onClick={() => setMenuOpen(!menuOpen)}
+        className="flex flex-col items-center hover:text-[#F28C18]"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white shadow-sm mb-1">
+          <IconUserOn />
+        </div>
+        <span className="leading-none">{user?.name || "Sesión"}</span>
+        <span className="leading-none font-semibold">Mi cuenta</span>
+      </button>
+
+      {menuOpen && (
+        <div className="absolute right-0 top-[46px] w-56 rounded-xl border border-slate-200 bg-white shadow-lg overflow-hidden z-50">
+          <div className="px-3 py-2 border-b border-slate-100">
+            <div className="text-xs text-slate-500 truncate">{user?.email}</div>
+            <div className="text-[11px] text-slate-400">
+              Plan: <b className="text-slate-600">{(user as any)?.plan ?? "free"}</b>
+            </div>
+          </div>
+
+          <div className="p-1">
+            <Link
+              to="/mis-procesos"
+              onClick={() => setMenuOpen(false)}
+              className="block rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              Ir a mi cuenta
+            </Link>
+
+            <button
+              type="button"
+              onClick={onLogout}
+              className="w-full text-left rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
 export default function Header() {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<SessionUser>(null);
   const [dark, setDark] = useState(false);
+
+  // ✅ fuente única: AuthProvider
+  const auth = useAuth();
+  const user = auth.user as SessionUser;
+
+  const [accountOpen, setAccountOpen] = useState(false);
+  const accRefDesktop = useRef<HTMLDivElement | null>(null);
+  const accRefMobile = useRef<HTMLDivElement | null>(null);
 
   const loc = useLocation();
   const nav = useNavigate();
-
-  // Carga / refresca la sesión (cookie HttpOnly)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = await me();
-        if (!cancelled) setUser(r?.user ?? null);
-      } catch {
-        if (!cancelled) setUser(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [loc.pathname]);
 
   // Inicializar modo oscuro desde la clase del documento (si la hubiera)
   useEffect(() => {
@@ -231,20 +262,44 @@ export default function Header() {
     });
   }
 
+  // cerrar dropdown al click afuera / Escape
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      const t = e.target as Node;
+      const d = accRefDesktop.current;
+      const m = accRefMobile.current;
+      const inside = (d && d.contains(t)) || (m && m.contains(t));
+      if (!inside) setAccountOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setAccountOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   async function onLogout() {
     try {
-      await apiLogout();
+      await auth.logout(); // ✅ aquí está la magia: actualiza TODO el front
     } finally {
-      setUser(null);
       setOpen(false);
+      setAccountOpen(false);
       nav("/");
     }
   }
 
+  // opcional: si cambias de ruta, cierra dropdown
+  useEffect(() => {
+    setAccountOpen(false);
+  }, [loc.pathname]);
+
   const isActive = (href: string) =>
     loc.pathname === href || (href !== "/" && loc.pathname.startsWith(href));
 
-  // Items del menú lateral
   const guestItems: MenuItem[] = [
     { href: "/", label: "Principal" },
     { href: "/login", label: "Iniciar sesión" },
@@ -265,7 +320,6 @@ export default function Header() {
 
   const menuItems: MenuItem[] = user ? userItems : guestItems;
 
-  // Mapeo simple href → icono para la barra compacta
   function iconFor(href: string) {
     if (href === "/") return <IconHome />;
     if (href.startsWith("/login")) return <IconLogin />;
@@ -279,18 +333,11 @@ export default function Header() {
 
   return (
     <>
-      {/* === Barra compacta / accesos rápidos cuando el menú está CERRADO === */}
       {!open && (
         <>
-          {/* Desktop: tarjeta vertical pegada a la esquina superior izquierda */}
           <div className="fixed left-0 top-0 z-40 hidden md:flex">
             <div className="m-4 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-md">
-              {/* Logo grande */}
-              <Link
-                to="/"
-                className="flex items-center justify-center"
-                aria-label="Ir al inicio de CleanDataAI"
-              >
+              <Link to="/" className="flex items-center justify-center" aria-label="Ir al inicio de CleanDataAI">
                 <img
                   src="/brand/cleandataai-logo.png"
                   alt="CleanDataAI"
@@ -300,12 +347,14 @@ export default function Header() {
                 />
               </Link>
 
-              {/* Botón hamburguesa (abre el drawer) */}
               <button
                 type="button"
                 aria-label="Abrir menú principal"
                 aria-expanded={open}
-                onClick={() => setOpen(true)}
+                onClick={() => {
+                  setAccountOpen(false);
+                  setOpen(true);
+                }}
                 className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-[#FDFBF6] text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40"
               >
                 <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
@@ -313,7 +362,6 @@ export default function Header() {
                 </svg>
               </button>
 
-              {/* Iconos de navegación */}
               <div className="flex flex-col items-center gap-3">
                 {menuItems
                   .filter((item) => item.href !== "/mis-procesos")
@@ -342,42 +390,28 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Mobile: barra horizontal arriba */}
           <div className="fixed inset-x-0 top-0 z-40 flex items-center justify-between bg-white/95 px-3 py-2 shadow md:hidden">
-            {/* Logo + accesos rápidos básicos (home + hamburguesa) */}
             <div className="flex items-center gap-2">
-              <Link
-                to="/"
-                aria-label="Ir al inicio de CleanDataAI"
-                className="flex items-center"
-              >
-                <img
-                  src="/brand/cleandataai-logo.png"
-                  alt="CleanDataAI"
-                  className="h-10 w-auto"
-                />
+              <Link to="/" aria-label="Ir al inicio de CleanDataAI" className="flex items-center">
+                <img src="/brand/cleandataai-logo.png" alt="CleanDataAI" className="h-10 w-auto" />
               </Link>
 
               <div className="flex items-center gap-1">
-                {/* Hamburguesa */}
                 <button
                   type="button"
                   aria-label="Abrir menú principal"
                   aria-expanded={open}
-                  onClick={() => setOpen(true)}
+                  onClick={() => {
+                    setAccountOpen(false);
+                    setOpen(true);
+                  }}
                   className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-[#FDFBF6] text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5"
-                    stroke="currentColor"
-                    fill="none"
-                  >
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" stroke="currentColor" fill="none">
                     <path strokeWidth={1.8} d="M4 7h16M4 12h16M4 17h16" />
                   </svg>
                 </button>
 
-                {/* Home rápido */}
                 <Link
                   to="/"
                   className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
@@ -388,54 +422,49 @@ export default function Header() {
               </div>
             </div>
 
-            {/* A la derecha: modo oscuro + estado autenticación */}
             <div className="flex items-center gap-3">
               <DarkModeToggle dark={dark} onToggle={toggleDark} />
-              <AuthStatus user={user} />
+              <AuthStatus
+                user={user}
+                menuOpen={accountOpen}
+                setMenuOpen={setAccountOpen}
+                onLogout={onLogout}
+                containerRef={accRefMobile}
+              />
             </div>
           </div>
 
-          {/* Desktop: bloque superior derecho (modo oscuro + auth) */}
           <div className="fixed right-4 top-4 z-40 hidden items-center gap-4 md:flex">
             <DarkModeToggle dark={dark} onToggle={toggleDark} />
-            <AuthStatus user={user} />
+            <AuthStatus
+              user={user}
+              menuOpen={accountOpen}
+              setMenuOpen={setAccountOpen}
+              onLogout={onLogout}
+              containerRef={accRefDesktop}
+            />
           </div>
         </>
       )}
 
-      {/* === Menú lateral / drawer cuando está ABIERTO === */}
       {open && (
         <div className="fixed inset-0 z-30">
-          {/* fondo semitransparente */}
-          <div
-            className="absolute inset-0 bg-black/10"
-            onClick={() => setOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/10" onClick={() => setOpen(false)} />
+
           <aside className="relative z-40 flex h-full w-[260px] flex-col border-r border-slate-200 bg-white pt-16 pb-6 shadow-xl">
-            {/* botón cerrar (la X grande) */}
             <button
               type="button"
               aria-label="Cerrar menú"
               onClick={() => setOpen(false)}
               className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#F28C18]/40"
             >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                stroke="currentColor"
-                fill="none"
-              >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" stroke="currentColor" fill="none">
                 <path strokeWidth={1.8} d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
 
-            {/* Logo en el menú abierto */}
             <div className="px-4 pb-4">
-              <img
-                src="/brand/cleandataai-logo.png"
-                alt="CleanDataAI"
-                className="h-8 w-auto"
-              />
+              <img src="/brand/cleandataai-logo.png" alt="CleanDataAI" className="h-8 w-auto" />
             </div>
 
             <nav className="mt-2 flex-1 space-y-1 px-2 text-sm">
@@ -445,8 +474,7 @@ export default function Header() {
                   const active = isActive(item.href);
                   const locked = item.locked;
 
-                  const base =
-                    "flex items-center justify-between rounded-md px-3 py-2 transition-colors";
+                  const base = "flex items-center justify-between rounded-md px-3 py-2 transition-colors";
                   const colors = locked
                     ? "text-slate-400 cursor-not-allowed pointer-events-none bg-slate-50"
                     : active
@@ -463,25 +491,9 @@ export default function Header() {
                       <span>{item.label}</span>
                       {locked && (
                         <span className="ml-2 inline-flex items-center">
-                          {/* icono candado */}
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4 text-slate-400"
-                            stroke="currentColor"
-                            fill="none"
-                          >
-                            <rect
-                              x="5"
-                              y="10"
-                              width="14"
-                              height="9"
-                              rx="2"
-                              strokeWidth={1.6}
-                            />
-                            <path
-                              d="M9 10V8a3 3 0 0 1 6 0v2"
-                              strokeWidth={1.6}
-                            />
+                          <svg viewBox="0 0 24 24" className="h-4 w-4 text-slate-400" stroke="currentColor" fill="none">
+                            <rect x="5" y="10" width="14" height="9" rx="2" strokeWidth={1.6} />
+                            <path d="M9 10V8a3 3 0 0 1 6 0v2" strokeWidth={1.6} />
                           </svg>
                         </span>
                       )}
@@ -490,15 +502,11 @@ export default function Header() {
                 })}
             </nav>
 
-            {/* zona inferior: sesión */}
             <div className="mt-2 border-t border-slate-100 pt-3 px-4 text-xs text-slate-400">
               {user ? (
                 <div className="flex items-center justify-between">
                   <span className="truncate">
-                    Sesión:{" "}
-                    <span className="font-medium text-slate-600">
-                      {user.email}
-                    </span>
+                    Sesión: <span className="font-medium text-slate-600">{user.email}</span>
                   </span>
                   <button
                     type="button"

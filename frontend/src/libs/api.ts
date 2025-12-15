@@ -53,12 +53,32 @@ export const logout = () => http<{ ok: true }>("/api/auth/logout", { method: "PO
 
 export const me = () => http<{ user: User }>("/api/auth/me");
 
+/** ✅ NUEVO: Registro local con plan (demo, sin pasarela) */
+export const register = (payload: { email: string; name?: string; plan?: string }) =>
+  http<{ ok: true; user: NonNullable<User> }>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+/** ✅ NUEVO: Cambiar plan del usuario logueado (simula upgrade/downgrade) */
+export const setPlan = (plan: string) =>
+  http<{ ok: true; user: NonNullable<User> }>("/api/auth/set-plan", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+
 /** Aliases (compat) */
 export const authRequestLogin = (email: string, name = "") => requestMagic(email, name);
 export const authVerifyToken = (token: string) => verifyMagic({ token });
 export const authVerifyOtp = (email: string, code: string) => verifyMagic({ email, code });
 export const authLogout = () => logout();
 export const authMe = () => me();
+
+/** ✅ Aliases nuevos */
+export const authRegister = (payload: { email: string; name?: string; plan?: string }) =>
+  register(payload);
+
+export const authSetPlan = (plan: string) => setPlan(plan);
 
 /* ======================== API de procesos ======================== */
 
@@ -101,7 +121,6 @@ export const requestDashboard = (id: string) =>
 /** Construye URL a artefactos protegidos por el backend.
  * Si recibe "runs/<id>/artifacts/<name>", lo mapea a "/api/artifacts/<id>/<name>".
  * Para cualquier otra ruta relativa, hace fallback a `${API}/${rel}`. */
-
 export function artifactUrl(rel: string) {
   const clean = (rel || "").replace(/^\/+/, "");
   const m = clean.match(/^runs\/([^/]+)\/artifacts\/([^/]+)$/i);
