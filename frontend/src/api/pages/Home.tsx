@@ -115,18 +115,38 @@ export default function Home() {
       <Header />
 
       {/* Contenido principal */}
-      <main className="pt-28 pb-16 px-4 md:pt-32 md:px-6 lg:pt-40 lg:pl-40 lg:pr-8">
+     <main className="pt-28 pb-16 px-4 md:pt-32 md:px-6 lg:pt-40 lg:pl-40 lg:pr-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-start">
           {/* Columna principal: subir archivo(s) */}
           <section className="flex-1">
-            <header className="mb-6 text-center">
-              <h1 className="text-2xl font-semibold text-slate-900">
-                Sube tu archivo o archivos
-              </h1>
-              <p className="mt-1 text-sm text-slate-500">
-                Automatiza la limpieza y prepara tus planillas en segundos.
-              </p>
-            </header>
+          <header className="mb-6 text-center relative">
+  {/* Título flotante (no empuja nada) */}
+  <div className="absolute left-1/2 -translate-x-1/2 -top-24 md:-top-28 lg:-top-32 z-10">
+    <div className="inline-flex flex-col items-center pointer-events-none select-none">
+      <h1
+        className="
+          text-4xl md:text-5xl font-extrabold tracking-tight
+          bg-gradient-to-r from-[#F6A04D] via-[#FFD1A1] to-[#E88A2E]
+
+          bg-clip-text text-transparent drop-shadow-sm
+        "
+      >
+        CleanDataAI
+      </h1>
+      <div className="mt-2 h-[3px] w-24 rounded-full bg-gradient-to-r from-[#F6A04D] to-[#E88A2E] opacity-80" />
+
+    </div>
+  </div>
+
+  {/* Esto queda en su posición normal (la de antes) */}
+  <h1 className="text-2xl font-semibold text-slate-900">
+    Sube tu archivo
+  </h1>
+  <p className="mt-1 text-sm text-slate-500">
+    Automatiza la limpieza y prepara tus planillas en segundos.
+  </p>
+</header>
+
 
             <div className="rounded-3xl border border-[#E4DCCB] bg-white px-4 py-6 shadow-sm sm:px-6 sm:py-7 md:px-10 md:py-9">
               {/* Zona de carga */}
@@ -173,9 +193,9 @@ export default function Home() {
                   </svg>
                 </div>
 
+                {/* ✅ Cambiado el texto del dropzone */}
                 <p className="text-sm text-slate-600">
-                  Arrastra tu archivo o varios archivos aquí o haz clic para
-                  examinar
+                  Arrastra tus archivos aquí o haz clic para examinar
                 </p>
 
                 <div className="mt-5 flex items-center justify-center gap-3">
@@ -202,9 +222,7 @@ export default function Home() {
 
                 {/* Info del archivo/archivos seleccionados */}
                 {fileInfo && (
-                  <div className="mt-4 text-xs text-slate-500">
-                    {fileInfo}
-                  </div>
+                  <div className="mt-4 text-xs text-slate-500">{fileInfo}</div>
                 )}
 
                 <div className="mt-3 text-[11px] text-slate-500">

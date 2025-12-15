@@ -1,12 +1,26 @@
-// src/main.tsx
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { RouterProvider } from 'react-router-dom';
-import { router } from './api/Router';
-import './index.css';
+// frontend/src/main.tsx
+import React, { Suspense } from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+import { router } from "../src/api/Router";
+import { AuthProvider } from "./context/Authcontext";
+import "./index.css";
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootEl = document.getElementById("root");
+if (!rootEl) throw new Error("No se encontró el elemento #root");
+
+ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <Suspense
+        fallback={
+          <div className="min-h-screen grid place-items-center text-slate-600">
+            Cargando…
+          </div>
+        }
+      >
+        <RouterProvider router={router} />
+      </Suspense>
+    </AuthProvider>
   </React.StrictMode>
 );
